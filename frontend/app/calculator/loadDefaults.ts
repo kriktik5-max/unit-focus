@@ -1,6 +1,6 @@
 import { Marketplace, FormData } from './config';
 
-const API = 'http://localhost:8000/api/v1/tariffs';
+const API = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/tariffs`;
 
 export async function loadDefaults(
   marketplace: Marketplace,

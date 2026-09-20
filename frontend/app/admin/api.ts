@@ -15,7 +15,7 @@ export type Tax = {
   is_active: boolean;
 };
 
-const API = 'http://localhost:8000/api/v1/admin';
+const API = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/admin`;
 
 export const MP_LABELS: Record<string, string> = {
   wb_fbo: 'Wildberries FBO',
