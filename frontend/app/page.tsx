@@ -34,7 +34,7 @@ export default function Home() {
         </div>
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
           Считайте <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">юнит-экономику</span><br />
-          для Wildberries и Ozon
+          для Wildberries, Ozon и Яндекс Маркета
         </h1>
         <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10">
           Узнайте реальную прибыль с каждой продажи за 30 секунд.
@@ -111,7 +111,7 @@ export default function Home() {
       <section id="marketplaces" className="bg-slate-900 text-white py-20">
         <div className="max-w-6xl mx-auto px-6">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Поддерживаемые маркетплейсы</h2>
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl p-8">
               <div className="text-2xl font-bold mb-2">Wildberries</div>
               <div className="text-purple-200 text-sm mb-6">Модель FBO</div>
@@ -132,10 +132,18 @@ export default function Home() {
                 <li>✓ Ozon Pay, утилизация</li>
               </ul>
             </div>
+            <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-8">
+              <div className="text-2xl font-bold mb-2">Яндекс Маркет</div>
+              <div className="text-yellow-100 text-sm mb-6">Модель FBY</div>
+              <ul className="space-y-2 text-sm">
+                <li>✓ Комиссия по категории</li>
+                <li>✓ Логистика по литрам</li>
+                <li>✓ Доставка покупателю (5%)</li>
+                <li>✓ Обработка заказа</li>
+              </ul>
+            </div>
           </div>
-          <p className="text-center text-slate-400 text-sm mt-8">
-            Яндекс.Маркет и Мегамаркет — в разработке
-          </p>
+          
         </div>
       </section>
 
@@ -145,7 +153,7 @@ export default function Home() {
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Как это работает</h2>
           <div className="space-y-8">
             {[
-              { n: '1', title: 'Выберите маркетплейс', text: 'Wildberries или Ozon — переключение в один клик' },
+              { n: '1', title: 'Выберите маркетплейс', text: 'Wildberries, Ozon или Яндекс Маркет — переключение в один клик' },
               { n: '2', title: 'Введите данные товара', text: 'Цена, себестоимость, комиссия, логистика — всё уже подставлено по умолчанию' },
               { n: '3', title: 'Получите расчёт', text: 'Прибыль, маржа, ROI, точка безубыточности и максимальная скидка' },
             ].map((step) => (
