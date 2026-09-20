@@ -23,6 +23,12 @@ class WbFboInput(BaseModel):
     return_rate_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
 
     tax_mode: TaxMode = TaxMode.USN_6
+    vat_rate: Decimal = Field(
+        default=Decimal("0"),
+        ge=0,
+        le=100,
+        description="Ставка НДС, %. Доступные значения зависят от налогового режима.",
+    )
 
 
 class WbFboOutput(BaseModel):
@@ -35,7 +41,13 @@ class WbFboOutput(BaseModel):
     cost_price: Decimal
     packaging: Decimal
     returns_loss: Decimal
-    tax: Decimal
+
+    # Налоги
+    vat_output: Decimal
+    vat_deductible: Decimal
+    vat_payable: Decimal
+    income_tax: Decimal
+    total_tax: Decimal
 
     profit_per_unit: Decimal
     margin_percent: Decimal

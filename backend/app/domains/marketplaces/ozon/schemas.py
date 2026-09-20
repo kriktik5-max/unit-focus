@@ -14,33 +14,25 @@ class OzonFboInput(BaseModel):
     selling_price: Decimal = Field(gt=0, description="Цена продажи, руб")
     quantity: int = Field(default=1, ge=1)
 
-    # Ozon-специфика
     commission_percent: Decimal = Field(ge=0, le=100, description="Комиссия Ozon, %")
-
-    # Логистика FBO: базовый тариф (обычно для товаров до 1 л) + надбавка
-    logistics_base: Decimal = Field(default=Decimal("46.77"), ge=0, description="Логистика: базовый тариф, руб")
-    logistics_per_liter: Decimal = Field(default=Decimal("10.17"), ge=0, description="Логистика: надбавка за литр, руб")
-    volume_liters: Decimal = Field(default=Decimal("1"), gt=0, description="Объём товара, л")
-
-    # Последняя миля: 5.5% от цены, но не более 500 руб
+    logistics_base: Decimal = Field(default=Decimal("46.77"), ge=0)
+    logistics_per_liter: Decimal = Field(default=Decimal("10.17"), ge=0)
+    volume_liters: Decimal = Field(default=Decimal("1"), gt=0)
     last_mile_percent: Decimal = Field(default=Decimal("5.5"), ge=0, le=100)
-    last_mile_max: Decimal = Field(default=Decimal("500"), ge=0, description="Максимум последней мили, руб")
-
-    # Эквайринг Ozon Pay
+    last_mile_max: Decimal = Field(default=Decimal("500"), ge=0)
     acquiring_percent: Decimal = Field(default=Decimal("2.2"), ge=0, le=100)
-
-    # Хранение (опционально — обычно первые 120 дней бесплатно)
     storage_cost: Decimal = Field(default=Decimal("0"), ge=0)
-
-    # Возвраты: утилизация + доля
-    return_rate_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
-    return_utilization_cost: Decimal = Field(default=Decimal("0"), ge=0, description="Утилизация возврата, руб")
-
-    # Реклама
     ads_cost: Decimal = Field(default=Decimal("0"), ge=0)
+    return_rate_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
+    return_utilization_cost: Decimal = Field(default=Decimal("0"), ge=0)
 
-    # Налог
     tax_mode: TaxMode = TaxMode.USN_6
+    vat_rate: Decimal = Field(
+        default=Decimal("0"),
+        ge=0,
+        le=100,
+        description="Ставка НДС, %. Доступные значения зависят от налогового режима.",
+    )
 
 
 class OzonFboOutput(BaseModel):
@@ -54,7 +46,12 @@ class OzonFboOutput(BaseModel):
     cost_price: Decimal
     packaging: Decimal
     returns_loss: Decimal
-    tax: Decimal
+
+    vat_output: Decimal
+    vat_deductible: Decimal
+    vat_payable: Decimal
+    income_tax: Decimal
+    total_tax: Decimal
 
     profit_per_unit: Decimal
     margin_percent: Decimal
