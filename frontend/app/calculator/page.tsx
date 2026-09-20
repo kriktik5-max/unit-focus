@@ -15,6 +15,7 @@ import {
   MP_META,
 } from './config';
 import { Field, Metric, Row } from './components';
+import { loadDefaults } from './loadDefaults';
 
 type Result = {
   revenue: string;
@@ -73,6 +74,23 @@ export default function Calculator() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taxMode]);
+
+  // Загружаем дефолтные значения из БД при смене маркетплейса
+  useEffect(() => {
+    (async () => {
+      const base =
+        marketplace === 'wb'
+          ? INITIAL_WB
+          : marketplace === 'ozon'
+          ? INITIAL_OZON
+          : INITIAL_YANDEX;
+      const loaded = await loadDefaults(marketplace, base);
+      if (marketplace === 'wb') setWbForm(loaded);
+      else if (marketplace === 'ozon') setOzonForm(loaded);
+      else setYandexForm(loaded);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketplace]);
 
   const update = (key: string, value: string) => {
     const isText = key === 'name';
