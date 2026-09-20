@@ -19,9 +19,16 @@ app = FastAPI(
     version="0.6.0",
 )
 
+import os
+
+# CORS: localhost для разработки + список из переменной (для прода)
+_default_origins = ["http://localhost:3000"]
+_env_origins = [u.strip() for u in os.environ.get("FRONTEND_URLS", "").split(",") if u.strip()]
+_allowed_origins = _default_origins + _env_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
