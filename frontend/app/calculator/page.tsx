@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-type Marketplace = 'wb' | 'ozon';
+type Marketplace = 'wb' | 'ozon' | 'yandex';
 
 type FieldConfig = {
   key: string;
@@ -71,6 +71,37 @@ const OZON_SECTIONS: SectionConfig[] = [
   },
 ];
 
+const YANDEX_SECTIONS: SectionConfig[] = [
+  {
+    title: 'Данные товара',
+    fields: [
+      { key: 'name', label: 'Название товара', type: 'text' },
+      { key: 'selling_price', label: 'Цена продажи, ₽', half: true },
+      { key: 'quantity', label: 'Количество, шт', half: true },
+      { key: 'cost_price', label: 'Себестоимость, ₽', half: true },
+      { key: 'packaging_cost', label: 'Упаковка, ₽', half: true },
+    ],
+  },
+  {
+    title: 'Расходы Яндекс Маркет',
+    fields: [
+      { key: 'commission_percent', label: 'Комиссия Маркета, %', half: true },
+      { key: 'acquiring_percent', label: 'Эквайринг, %', half: true },
+      { key: 'logistics_first_liter', label: 'Логистика: 1-й литр, ₽', half: true },
+      { key: 'logistics_per_additional_liter', label: 'Логистика: за литр, ₽', half: true },
+      { key: 'logistics_max', label: 'Макс. логистики, ₽', half: true },
+      { key: 'volume_liters', label: 'Объём, л', half: true },
+      { key: 'delivery_percent', label: 'Доставка покупателю, %', half: true },
+      { key: 'delivery_max', label: 'Макс. доставки, ₽', half: true },
+      { key: 'order_processing', label: 'Обработка заказа, ₽', half: true },
+      { key: 'storage_cost', label: 'Хранение, ₽', half: true },
+      { key: 'ads_cost', label: 'Реклама, ₽', half: true },
+      { key: 'return_rate_percent', label: 'Возвраты, %', half: true },
+      { key: 'return_utilization_cost', label: 'Утилизация, ₽', half: true },
+    ],
+  },
+];
+
 const INITIAL_WB: FormData = {
   name: 'Футболка хлопок',
   selling_price: 1000, quantity: 10,
@@ -92,29 +123,54 @@ const INITIAL_OZON: FormData = {
   tax_mode: 'usn_6',
 };
 
+const INITIAL_YANDEX: FormData = {
+  name: 'Футболка хлопок',
+  selling_price: 1000, quantity: 10,
+  cost_price: 300, packaging_cost: 20,
+  commission_percent: 20,
+  logistics_first_liter: 80, logistics_per_additional_liter: 9,
+  logistics_max: 5500, volume_liters: 1,
+  delivery_percent: 5, delivery_max: 1000,
+  order_processing: 25,
+  storage_cost: 0, acquiring_percent: 0, ads_cost: 50,
+  return_rate_percent: 0, return_utilization_cost: 0,
+  tax_mode: 'usn_6',
+};
+
 type Result = {
   revenue: string; commission: string; acquiring: string; logistics: string;
-  last_mile?: string; storage: string; ads: string;
+  last_mile?: string; delivery?: string; order_processing?: string;
+  storage: string; ads: string;
   cost_price: string; packaging: string; returns_loss: string; tax: string;
   profit_per_unit: string; margin_percent: string; roi_percent: string;
   profit_total: string; break_even_price: string; max_discount_percent: string;
 };
 
-export default function Home() {
+const MP_META: Record<Marketplace, { label: string; color: string; colorHover: string }> = {
+  wb: { label: 'Wildberries FBO', color: 'bg-purple-600', colorHover: 'hover:bg-purple-700' },
+  ozon: { label: 'Ozon FBO', color: 'bg-blue-600', colorHover: 'hover:bg-blue-700' },
+  yandex: { label: 'Яндекс Маркет FBY', color: 'bg-yellow-500', colorHover: 'hover:bg-yellow-600' },
+};
+
+export default function Calculator() {
   const [marketplace, setMarketplace] = useState<Marketplace>('wb');
   const [wbForm, setWbForm] = useState<FormData>(INITIAL_WB);
   const [ozonForm, setOzonForm] = useState<FormData>(INITIAL_OZON);
+  const [yandexForm, setYandexForm] = useState<FormData>(INITIAL_YANDEX);
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sections = marketplace === 'wb' ? WB_SECTIONS : OZON_SECTIONS;
-  const form = marketplace === 'wb' ? wbForm : ozonForm;
-  const setForm = marketplace === 'wb' ? setWbForm : setOzonForm;
+  const sections =
+    marketplace === 'wb' ? WB_SECTIONS : marketplace === 'ozon' ? OZON_SECTIONS : YANDEX_SECTIONS;
+  const form =
+    marketplace === 'wb' ? wbForm : marketplace === 'ozon' ? ozonForm : yandexForm;
+  const setForm =
+    marketplace === 'wb' ? setWbForm : marketplace === 'ozon' ? setOzonForm : setYandexForm;
 
   const update = (key: string, value: string) => {
     const isText = key === 'name';
-    setForm({ ...form, [key]: isText ? value : (value === '' ? 0 : Number(value)) });
+    setForm({ ...form, [key]: isText ? value : value === '' ? 0 : Number(value) });
   };
 
   const switchMp = (mp: Marketplace) => {
@@ -125,7 +181,8 @@ export default function Home() {
 
   const calculate = async () => {
     setLoading(true); setError(null); setResult(null);
-    const endpoint = marketplace === 'wb' ? 'wb-fbo' : 'ozon-fbo';
+    const endpoint =
+      marketplace === 'wb' ? 'wb-fbo' : marketplace === 'ozon' ? 'ozon-fbo' : 'yandex-fby';
     try {
       const res = await fetch(`http://localhost:8000/api/v1/calculations/${endpoint}`, {
         method: 'POST',
@@ -141,27 +198,29 @@ export default function Home() {
     }
   };
 
+  const meta = MP_META[marketplace];
+
   return (
     <main className="min-h-screen bg-slate-50 py-10 px-4">
       <div className="max-w-5xl mx-auto">
         <header className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900">Юнит-Фокус — юнит-экономика</h1>
-          <p className="text-slate-600 mt-2">Расчёт чистой прибыли и точки безубыточности для маркетплейсов</p>
+          <a href="/" className="text-sm text-slate-500 hover:text-slate-800">← На главную</a>
+          <h1 className="text-3xl font-bold text-slate-900 mt-2">Калькулятор юнит-экономики</h1>
+          <p className="text-slate-600 mt-2">Расчёт прибыли, маржи, ROI и точки безубыточности</p>
         </header>
 
-        <div className="mb-6 inline-flex rounded-xl bg-white shadow p-1">
-          <button
-            onClick={() => switchMp('wb')}
-            className={`px-6 py-2 rounded-lg font-medium transition ${marketplace === 'wb' ? 'bg-purple-600 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
-          >
-            Wildberries FBO
-          </button>
-          <button
-            onClick={() => switchMp('ozon')}
-            className={`px-6 py-2 rounded-lg font-medium transition ${marketplace === 'ozon' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
-          >
-            Ozon FBO
-          </button>
+        <div className="mb-6 inline-flex flex-wrap rounded-xl bg-white shadow p-1 gap-1">
+          {(['wb', 'ozon', 'yandex'] as Marketplace[]).map((mp) => (
+            <button
+              key={mp}
+              onClick={() => switchMp(mp)}
+              className={`px-4 py-2 rounded-lg font-medium transition text-sm ${
+                marketplace === mp ? `${MP_META[mp].color} text-white` : 'text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {MP_META[mp].label}
+            </button>
+          ))}
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -202,7 +261,7 @@ export default function Home() {
             <button
               onClick={calculate}
               disabled={loading}
-              className={`w-full text-white font-semibold py-3 rounded-lg transition ${marketplace === 'wb' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} disabled:bg-slate-400`}
+              className={`w-full text-white font-semibold py-3 rounded-lg transition ${meta.color} ${meta.colorHover} disabled:bg-slate-400`}
             >
               {loading ? 'Считаем…' : 'Рассчитать'}
             </button>
@@ -244,6 +303,8 @@ export default function Home() {
                     <Row label="Эквайринг" value={result.acquiring} />
                     <Row label="Логистика" value={result.logistics} />
                     {result.last_mile !== undefined && <Row label="Последняя миля" value={result.last_mile} />}
+                    {result.delivery !== undefined && <Row label="Доставка покупателю" value={result.delivery} />}
+                    {result.order_processing !== undefined && <Row label="Обработка заказа" value={result.order_processing} />}
                     <Row label="Хранение" value={result.storage} />
                     <Row label="Реклама" value={result.ads} />
                     <Row label="Себестоимость" value={result.cost_price} />
@@ -305,3 +366,4 @@ function Row({ label, value, positive = false }: { label: string; value: string;
     </div>
   );
 }
+
