@@ -2,55 +2,132 @@
 
 import { useState } from 'react';
 
-type Result = {
-  revenue: string;
-  commission: string;
-  acquiring: string;
-  logistics: string;
-  storage: string;
-  ads: string;
-  cost_price: string;
-  packaging: string;
-  returns_loss: string;
-  tax: string;
-  profit_per_unit: string;
-  margin_percent: string;
-  roi_percent: string;
-  profit_total: string;
-  break_even_price: string;
-  max_discount_percent: string;
+type Marketplace = 'wb' | 'ozon';
+
+type FieldConfig = {
+  key: string;
+  label: string;
+  type?: 'text' | 'number';
+  half?: boolean;
 };
 
-const initialForm = {
+type SectionConfig = {
+  title: string;
+  fields: FieldConfig[];
+};
+
+type FormData = Record<string, string | number>;
+
+const WB_SECTIONS: SectionConfig[] = [
+  {
+    title: 'Данные товара',
+    fields: [
+      { key: 'name', label: 'Название товара', type: 'text' },
+      { key: 'selling_price', label: 'Цена продажи, ₽', half: true },
+      { key: 'quantity', label: 'Количество, шт', half: true },
+      { key: 'cost_price', label: 'Себестоимость, ₽', half: true },
+      { key: 'packaging_cost', label: 'Упаковка, ₽', half: true },
+    ],
+  },
+  {
+    title: 'Расходы Wildberries',
+    fields: [
+      { key: 'commission_percent', label: 'Комиссия WB, %', half: true },
+      { key: 'logistics_cost', label: 'Логистика, ₽', half: true },
+      { key: 'storage_cost', label: 'Хранение, ₽', half: true },
+      { key: 'acquiring_percent', label: 'Эквайринг, %', half: true },
+      { key: 'ads_cost', label: 'Реклама, ₽', half: true },
+      { key: 'return_rate_percent', label: 'Возвраты, %', half: true },
+    ],
+  },
+];
+
+const OZON_SECTIONS: SectionConfig[] = [
+  {
+    title: 'Данные товара',
+    fields: [
+      { key: 'name', label: 'Название товара', type: 'text' },
+      { key: 'selling_price', label: 'Цена продажи, ₽', half: true },
+      { key: 'quantity', label: 'Количество, шт', half: true },
+      { key: 'cost_price', label: 'Себестоимость, ₽', half: true },
+      { key: 'packaging_cost', label: 'Упаковка, ₽', half: true },
+    ],
+  },
+  {
+    title: 'Расходы Ozon',
+    fields: [
+      { key: 'commission_percent', label: 'Комиссия Ozon, %', half: true },
+      { key: 'acquiring_percent', label: 'Эквайринг Ozon Pay, %', half: true },
+      { key: 'logistics_base', label: 'Логистика: база, ₽', half: true },
+      { key: 'logistics_per_liter', label: 'Надбавка за литр, ₽', half: true },
+      { key: 'volume_liters', label: 'Объём, л', half: true },
+      { key: 'last_mile_percent', label: 'Последняя миля, %', half: true },
+      { key: 'last_mile_max', label: 'Макс. последней мили, ₽', half: true },
+      { key: 'storage_cost', label: 'Хранение, ₽', half: true },
+      { key: 'ads_cost', label: 'Реклама, ₽', half: true },
+      { key: 'return_rate_percent', label: 'Возвраты, %', half: true },
+      { key: 'return_utilization_cost', label: 'Утилизация возврата, ₽', half: true },
+    ],
+  },
+];
+
+const INITIAL_WB: FormData = {
   name: 'Футболка хлопок',
-  selling_price: 1000,
-  quantity: 10,
-  cost_price: 300,
-  packaging_cost: 20,
-  commission_percent: 20,
-  logistics_cost: 80,
-  storage_cost: 10,
-  acquiring_percent: 0,
-  ads_cost: 50,
-  return_rate_percent: 0,
+  selling_price: 1000, quantity: 10,
+  cost_price: 300, packaging_cost: 20,
+  commission_percent: 20, logistics_cost: 80, storage_cost: 10,
+  acquiring_percent: 0, ads_cost: 50, return_rate_percent: 0,
   tax_mode: 'usn_6',
 };
 
+const INITIAL_OZON: FormData = {
+  name: 'Футболка хлопок',
+  selling_price: 1000, quantity: 10,
+  cost_price: 300, packaging_cost: 20,
+  commission_percent: 15,
+  logistics_base: 46.77, logistics_per_liter: 10.17, volume_liters: 1,
+  last_mile_percent: 5.5, last_mile_max: 500,
+  acquiring_percent: 2.2, storage_cost: 0, ads_cost: 50,
+  return_rate_percent: 0, return_utilization_cost: 0,
+  tax_mode: 'usn_6',
+};
+
+type Result = {
+  revenue: string; commission: string; acquiring: string; logistics: string;
+  last_mile?: string; storage: string; ads: string;
+  cost_price: string; packaging: string; returns_loss: string; tax: string;
+  profit_per_unit: string; margin_percent: string; roi_percent: string;
+  profit_total: string; break_even_price: string; max_discount_percent: string;
+};
+
 export default function Home() {
-  const [form, setForm] = useState(initialForm);
+  const [marketplace, setMarketplace] = useState<Marketplace>('wb');
+  const [wbForm, setWbForm] = useState<FormData>(INITIAL_WB);
+  const [ozonForm, setOzonForm] = useState<FormData>(INITIAL_OZON);
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const sections = marketplace === 'wb' ? WB_SECTIONS : OZON_SECTIONS;
+  const form = marketplace === 'wb' ? wbForm : ozonForm;
+  const setForm = marketplace === 'wb' ? setWbForm : setOzonForm;
+
   const update = (key: string, value: string) => {
-    setForm((f) => ({ ...f, [key]: value === '' ? 0 : Number(value) }));
+    const isText = key === 'name';
+    setForm({ ...form, [key]: isText ? value : (value === '' ? 0 : Number(value)) });
+  };
+
+  const switchMp = (mp: Marketplace) => {
+    setMarketplace(mp);
+    setResult(null);
+    setError(null);
   };
 
   const calculate = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null); setResult(null);
+    const endpoint = marketplace === 'wb' ? 'wb-fbo' : 'ozon-fbo';
     try {
-      const res = await fetch('http://localhost:8000/api/v1/calculations/wb-fbo', {
+      const res = await fetch(`http://localhost:8000/api/v1/calculations/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -67,50 +144,52 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-50 py-10 px-4">
       <div className="max-w-5xl mx-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">UnitCalc — юнит-экономика WB</h1>
-          <p className="text-slate-600 mt-2">Расчёт чистой прибыли и точки безубыточности для Wildberries FBO</p>
+        <header className="mb-6">
+          <h1 className="text-3xl font-bold text-slate-900">UnitCalc — юнит-экономика</h1>
+          <p className="text-slate-600 mt-2">Расчёт чистой прибыли и точки безубыточности для маркетплейсов</p>
         </header>
+
+        <div className="mb-6 inline-flex rounded-xl bg-white shadow p-1">
+          <button
+            onClick={() => switchMp('wb')}
+            className={`px-6 py-2 rounded-lg font-medium transition ${marketplace === 'wb' ? 'bg-purple-600 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
+          >
+            Wildberries FBO
+          </button>
+          <button
+            onClick={() => switchMp('ozon')}
+            className={`px-6 py-2 rounded-lg font-medium transition ${marketplace === 'ozon' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
+          >
+            Ozon FBO
+          </button>
+        </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           <section className="bg-white rounded-2xl shadow p-6 space-y-5">
-            <h2 className="text-lg font-semibold text-slate-800">Данные товара</h2>
-
-            <Field label="Название товара" value={form.name} onChange={(v) => setForm(f => ({...f, name: v}))} type="text" />
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Цена продажи, ₽" value={form.selling_price} onChange={(v) => update('selling_price', v)} />
-              <Field label="Количество, шт" value={form.quantity} onChange={(v) => update('quantity', v)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Себестоимость, ₽" value={form.cost_price} onChange={(v) => update('cost_price', v)} />
-              <Field label="Упаковка, ₽" value={form.packaging_cost} onChange={(v) => update('packaging_cost', v)} />
-            </div>
-
-            <h2 className="text-lg font-semibold text-slate-800 pt-2">Расходы Wildberries</h2>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Комиссия WB, %" value={form.commission_percent} onChange={(v) => update('commission_percent', v)} />
-              <Field label="Логистика, ₽" value={form.logistics_cost} onChange={(v) => update('logistics_cost', v)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Хранение, ₽" value={form.storage_cost} onChange={(v) => update('storage_cost', v)} />
-              <Field label="Эквайринг, %" value={form.acquiring_percent} onChange={(v) => update('acquiring_percent', v)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Реклама, ₽" value={form.ads_cost} onChange={(v) => update('ads_cost', v)} />
-              <Field label="Возвраты, %" value={form.return_rate_percent} onChange={(v) => update('return_rate_percent', v)} />
-            </div>
+            {sections.map((section) => (
+              <div key={section.title}>
+                <h2 className="text-lg font-semibold text-slate-800 mb-3">{section.title}</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {section.fields.map((f) => (
+                    <div key={f.key} className={f.half ? '' : 'col-span-2'}>
+                      <Field
+                        label={f.label}
+                        value={form[f.key]}
+                        onChange={(v) => update(f.key, v)}
+                        type={f.type}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Налоговый режим</label>
               <select
-                value={form.tax_mode}
-                onChange={(e) => setForm(f => ({...f, tax_mode: e.target.value}))}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
+                value={String(form.tax_mode)}
+                onChange={(e) => setForm({ ...form, tax_mode: e.target.value })}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
               >
                 <option value="none">Без налога</option>
                 <option value="self_employed">Самозанятый (6%)</option>
@@ -123,7 +202,7 @@ export default function Home() {
             <button
               onClick={calculate}
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-lg transition"
+              className={`w-full text-white font-semibold py-3 rounded-lg transition ${marketplace === 'wb' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} disabled:bg-slate-400`}
             >
               {loading ? 'Считаем…' : 'Рассчитать'}
             </button>
@@ -161,9 +240,10 @@ export default function Home() {
                   <h3 className="text-sm font-semibold text-slate-700 mb-2">Водопад расходов</h3>
                   <div className="space-y-1 text-sm">
                     <Row label="Выручка" value={result.revenue} positive />
-                    <Row label="Комиссия WB" value={result.commission} />
+                    <Row label="Комиссия" value={result.commission} />
                     <Row label="Эквайринг" value={result.acquiring} />
                     <Row label="Логистика" value={result.logistics} />
+                    {result.last_mile !== undefined && <Row label="Последняя миля" value={result.last_mile} />}
                     <Row label="Хранение" value={result.storage} />
                     <Row label="Реклама" value={result.ads} />
                     <Row label="Себестоимость" value={result.cost_price} />

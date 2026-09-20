@@ -4,11 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.domains.marketplaces.wildberries.calculator import WbFboCalculator
 from app.domains.marketplaces.wildberries.schemas import WbFboInput, WbFboOutput
+from app.domains.marketplaces.ozon.calculator import OzonFboCalculator
+from app.domains.marketplaces.ozon.schemas import OzonFboInput, OzonFboOutput
 
 app = FastAPI(
     title="UnitCalc API",
     description="Юнит-экономика для российских маркетплейсов",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -20,11 +22,12 @@ app.add_middleware(
 )
 
 _wb_calc = WbFboCalculator()
+_ozon_calc = OzonFboCalculator()
 
 
 @app.get("/")
 def root():
-    return {"service": "UnitCalc API", "version": "0.1.0", "status": "ok"}
+    return {"service": "UnitCalc API", "version": "0.2.0", "status": "ok"}
 
 
 @app.get("/health")
@@ -35,3 +38,8 @@ def health():
 @app.post("/api/v1/calculations/wb-fbo", response_model=WbFboOutput)
 def calculate_wb_fbo(payload: WbFboInput) -> WbFboOutput:
     return _wb_calc.calculate(payload)
+
+
+@app.post("/api/v1/calculations/ozon-fbo", response_model=OzonFboOutput)
+def calculate_ozon_fbo(payload: OzonFboInput) -> OzonFboOutput:
+    return _ozon_calc.calculate(payload)
