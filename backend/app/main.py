@@ -1,4 +1,4 @@
-"""Точка входа backend-сервиса UnitCalc."""
+"""Точка входа backend-сервиса Юнит-Фокус."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,7 +8,7 @@ from app.domains.marketplaces.ozon.calculator import OzonFboCalculator
 from app.domains.marketplaces.ozon.schemas import OzonFboInput, OzonFboOutput
 
 app = FastAPI(
-    title="UnitCalc API",
+    title="Юнит-Фокус API",
     description="Юнит-экономика для российских маркетплейсов",
     version="0.2.0",
 )
@@ -27,7 +27,7 @@ _ozon_calc = OzonFboCalculator()
 
 @app.get("/")
 def root():
-    return {"service": "UnitCalc API", "version": "0.2.0", "status": "ok"}
+    return {"service": "Юнит-Фокус API", "version": "0.2.0", "status": "ok"}
 
 
 @app.get("/health")

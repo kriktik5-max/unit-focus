@@ -1,307 +1,193 @@
-'use client';
-
-import { useState } from 'react';
-
-type Marketplace = 'wb' | 'ozon';
-
-type FieldConfig = {
-  key: string;
-  label: string;
-  type?: 'text' | 'number';
-  half?: boolean;
-};
-
-type SectionConfig = {
-  title: string;
-  fields: FieldConfig[];
-};
-
-type FormData = Record<string, string | number>;
-
-const WB_SECTIONS: SectionConfig[] = [
-  {
-    title: 'Данные товара',
-    fields: [
-      { key: 'name', label: 'Название товара', type: 'text' },
-      { key: 'selling_price', label: 'Цена продажи, ₽', half: true },
-      { key: 'quantity', label: 'Количество, шт', half: true },
-      { key: 'cost_price', label: 'Себестоимость, ₽', half: true },
-      { key: 'packaging_cost', label: 'Упаковка, ₽', half: true },
-    ],
-  },
-  {
-    title: 'Расходы Wildberries',
-    fields: [
-      { key: 'commission_percent', label: 'Комиссия WB, %', half: true },
-      { key: 'logistics_cost', label: 'Логистика, ₽', half: true },
-      { key: 'storage_cost', label: 'Хранение, ₽', half: true },
-      { key: 'acquiring_percent', label: 'Эквайринг, %', half: true },
-      { key: 'ads_cost', label: 'Реклама, ₽', half: true },
-      { key: 'return_rate_percent', label: 'Возвраты, %', half: true },
-    ],
-  },
-];
-
-const OZON_SECTIONS: SectionConfig[] = [
-  {
-    title: 'Данные товара',
-    fields: [
-      { key: 'name', label: 'Название товара', type: 'text' },
-      { key: 'selling_price', label: 'Цена продажи, ₽', half: true },
-      { key: 'quantity', label: 'Количество, шт', half: true },
-      { key: 'cost_price', label: 'Себестоимость, ₽', half: true },
-      { key: 'packaging_cost', label: 'Упаковка, ₽', half: true },
-    ],
-  },
-  {
-    title: 'Расходы Ozon',
-    fields: [
-      { key: 'commission_percent', label: 'Комиссия Ozon, %', half: true },
-      { key: 'acquiring_percent', label: 'Эквайринг Ozon Pay, %', half: true },
-      { key: 'logistics_base', label: 'Логистика: база, ₽', half: true },
-      { key: 'logistics_per_liter', label: 'Надбавка за литр, ₽', half: true },
-      { key: 'volume_liters', label: 'Объём, л', half: true },
-      { key: 'last_mile_percent', label: 'Последняя миля, %', half: true },
-      { key: 'last_mile_max', label: 'Макс. последней мили, ₽', half: true },
-      { key: 'storage_cost', label: 'Хранение, ₽', half: true },
-      { key: 'ads_cost', label: 'Реклама, ₽', half: true },
-      { key: 'return_rate_percent', label: 'Возвраты, %', half: true },
-      { key: 'return_utilization_cost', label: 'Утилизация возврата, ₽', half: true },
-    ],
-  },
-];
-
-const INITIAL_WB: FormData = {
-  name: 'Футболка хлопок',
-  selling_price: 1000, quantity: 10,
-  cost_price: 300, packaging_cost: 20,
-  commission_percent: 20, logistics_cost: 80, storage_cost: 10,
-  acquiring_percent: 0, ads_cost: 50, return_rate_percent: 0,
-  tax_mode: 'usn_6',
-};
-
-const INITIAL_OZON: FormData = {
-  name: 'Футболка хлопок',
-  selling_price: 1000, quantity: 10,
-  cost_price: 300, packaging_cost: 20,
-  commission_percent: 15,
-  logistics_base: 46.77, logistics_per_liter: 10.17, volume_liters: 1,
-  last_mile_percent: 5.5, last_mile_max: 500,
-  acquiring_percent: 2.2, storage_cost: 0, ads_cost: 50,
-  return_rate_percent: 0, return_utilization_cost: 0,
-  tax_mode: 'usn_6',
-};
-
-type Result = {
-  revenue: string; commission: string; acquiring: string; logistics: string;
-  last_mile?: string; storage: string; ads: string;
-  cost_price: string; packaging: string; returns_loss: string; tax: string;
-  profit_per_unit: string; margin_percent: string; roi_percent: string;
-  profit_total: string; break_even_price: string; max_discount_percent: string;
-};
+import Link from 'next/link';
 
 export default function Home() {
-  const [marketplace, setMarketplace] = useState<Marketplace>('wb');
-  const [wbForm, setWbForm] = useState<FormData>(INITIAL_WB);
-  const [ozonForm, setOzonForm] = useState<FormData>(INITIAL_OZON);
-  const [result, setResult] = useState<Result | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const sections = marketplace === 'wb' ? WB_SECTIONS : OZON_SECTIONS;
-  const form = marketplace === 'wb' ? wbForm : ozonForm;
-  const setForm = marketplace === 'wb' ? setWbForm : setOzonForm;
-
-  const update = (key: string, value: string) => {
-    const isText = key === 'name';
-    setForm({ ...form, [key]: isText ? value : (value === '' ? 0 : Number(value)) });
-  };
-
-  const switchMp = (mp: Marketplace) => {
-    setMarketplace(mp);
-    setResult(null);
-    setError(null);
-  };
-
-  const calculate = async () => {
-    setLoading(true); setError(null); setResult(null);
-    const endpoint = marketplace === 'wb' ? 'wb-fbo' : 'ozon-fbo';
-    try {
-      const res = await fetch(`http://localhost:8000/api/v1/calculations/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error('Ошибка расчёта: ' + res.status);
-      setResult(await res.json());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Неизвестная ошибка');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <main className="min-h-screen bg-slate-50 py-10 px-4">
-      <div className="max-w-5xl mx-auto">
-        <header className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900">UnitCalc — юнит-экономика</h1>
-          <p className="text-slate-600 mt-2">Расчёт чистой прибыли и точки безубыточности для маркетплейсов</p>
-        </header>
+    <div className="min-h-screen bg-white text-slate-900">
 
-        <div className="mb-6 inline-flex rounded-xl bg-white shadow p-1">
-          <button
-            onClick={() => switchMp('wb')}
-            className={`px-6 py-2 rounded-lg font-medium transition ${marketplace === 'wb' ? 'bg-purple-600 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
+      {/* ШАПКА */}
+      <header className="border-b border-slate-200">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+              UF
+            </div>
+            <span className="font-bold text-lg">Юнит-Фокус</span>
+          </div>
+          <nav className="hidden md:flex items-center gap-8 text-sm text-slate-600">
+            <a href="#features" className="hover:text-slate-900">Возможности</a>
+            <a href="#marketplaces" className="hover:text-slate-900">Маркетплейсы</a>
+            <a href="#how" className="hover:text-slate-900">Как работает</a>
+          </nav>
+          <Link
+            href="/calculator"
+            className="bg-slate-900 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
           >
-            Wildberries FBO
-          </button>
-          <button
-            onClick={() => switchMp('ozon')}
-            className={`px-6 py-2 rounded-lg font-medium transition ${marketplace === 'ozon' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
-          >
-            Ozon FBO
-          </button>
+            Открыть калькулятор
+          </Link>
         </div>
+      </header>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <section className="bg-white rounded-2xl shadow p-6 space-y-5">
-            {sections.map((section) => (
-              <div key={section.title}>
-                <h2 className="text-lg font-semibold text-slate-800 mb-3">{section.title}</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {section.fields.map((f) => (
-                    <div key={f.key} className={f.half ? '' : 'col-span-2'}>
-                      <Field
-                        label={f.label}
-                        value={form[f.key]}
-                        onChange={(v) => update(f.key, v)}
-                        type={f.type}
-                      />
-                    </div>
-                  ))}
+      {/* HERO */}
+      <section className="max-w-6xl mx-auto px-6 py-20 text-center">
+        <div className="inline-block bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full mb-6">
+          Бесплатно · Без регистрации
+        </div>
+        <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+          Считайте <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">юнит-экономику</span><br />
+          для Wildberries и Ozon
+        </h1>
+        <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10">
+          Узнайте реальную прибыль с каждой продажи за 30 секунд.
+          Все комиссии, логистика, налоги и реклама — в одном расчёте.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link
+            href="/calculator"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-lg transition"
+          >
+            Рассчитать бесплатно →
+          </Link>
+          <a
+            href="#how"
+            className="bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold px-8 py-4 rounded-xl text-lg transition"
+          >
+            Как это работает
+          </a>
+        </div>
+      </section>
+
+      {/* БОЛЬ */}
+      <section className="bg-slate-50 py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Знакомая ситуация?</h2>
+          <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
+            Товар продаётся, выручка растёт, а денег почему-то нет
+          </p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: '📉', title: 'Кажется, что в плюсе', text: 'Продали на 100 000 ₽, а после комиссий, логистики и рекламы осталось 3 000 ₽' },
+              { icon: '🤯', title: 'Комиссии меняются', text: 'WB и Ozon каждый месяц меняют тарифы. Не успеваете пересчитывать' },
+              { icon: '🎯', title: 'Не знаете точку безубыточности', text: 'До какой цены можно участвовать в акции, чтобы не уйти в минус?' },
+            ].map((item) => (
+              <div key={item.title} className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="text-3xl mb-4">{item.icon}</div>
+                <h3 className="font-bold text-lg mb-2">{item.title}</h3>
+                <p className="text-slate-600 text-sm">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ЧТО СЧИТАЕМ */}
+      <section id="features" className="py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Что считает Юнит-Фокус</h2>
+          <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
+            Полный расчёт — от цены до чистой прибыли
+          </p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { icon: '💰', title: 'Чистая прибыль', text: 'С каждой единицы и со всей партии' },
+              { icon: '📊', title: 'Маржа и ROI', text: 'Понятные проценты без бухгалтерии' },
+              { icon: '⚖️', title: 'Точка безубыточности', text: 'Минимальная цена, чтобы не уйти в минус' },
+              { icon: '🏷️', title: 'Максимальная скидка', text: 'Сколько можно скинуть под акцию' },
+              { icon: '🚚', title: 'Все расходы', text: 'Комиссия, логистика, хранение, эквайринг' },
+              { icon: '📢', title: 'Реклама', text: 'Учитываем стоимость продвижения' },
+              { icon: '↩️', title: 'Возвраты', text: 'Сколько съедают возвраты и утилизация' },
+              { icon: '🧾', title: 'Налоги', text: 'УСН, самозанятый, ОСНО — все режимы' },
+            ].map((item) => (
+              <div key={item.title} className="border border-slate-200 rounded-xl p-5 hover:border-blue-500 transition">
+                <div className="text-2xl mb-3">{item.icon}</div>
+                <h3 className="font-semibold mb-1">{item.title}</h3>
+                <p className="text-slate-600 text-sm">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* МАРКЕТПЛЕЙСЫ */}
+      <section id="marketplaces" className="bg-slate-900 text-white py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Поддерживаемые маркетплейсы</h2>
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl p-8">
+              <div className="text-2xl font-bold mb-2">Wildberries</div>
+              <div className="text-purple-200 text-sm mb-6">Модель FBO</div>
+              <ul className="space-y-2 text-sm">
+                <li>✓ Комиссия по категории</li>
+                <li>✓ Логистика и хранение</li>
+                <li>✓ Эквайринг</li>
+                <li>✓ Расчёт возвратов</li>
+              </ul>
+            </div>
+            <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-8">
+              <div className="text-2xl font-bold mb-2">Ozon</div>
+              <div className="text-blue-200 text-sm mb-6">Модель FBO</div>
+              <ul className="space-y-2 text-sm">
+                <li>✓ Комиссия по категории</li>
+                <li>✓ Логистика по объёму</li>
+                <li>✓ Последняя миля (5.5%)</li>
+                <li>✓ Ozon Pay, утилизация</li>
+              </ul>
+            </div>
+          </div>
+          <p className="text-center text-slate-400 text-sm mt-8">
+            Яндекс.Маркет и Мегамаркет — в разработке
+          </p>
+        </div>
+      </section>
+
+      {/* КАК РАБОТАЕТ */}
+      <section id="how" className="py-20">
+        <div className="max-w-4xl mx-auto px-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Как это работает</h2>
+          <div className="space-y-8">
+            {[
+              { n: '1', title: 'Выберите маркетплейс', text: 'Wildberries или Ozon — переключение в один клик' },
+              { n: '2', title: 'Введите данные товара', text: 'Цена, себестоимость, комиссия, логистика — всё уже подставлено по умолчанию' },
+              { n: '3', title: 'Получите расчёт', text: 'Прибыль, маржа, ROI, точка безубыточности и максимальная скидка' },
+            ].map((step) => (
+              <div key={step.n} className="flex gap-6 items-start">
+                <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg flex-shrink-0">
+                  {step.n}
+                </div>
+                <div>
+                  <h3 className="font-bold text-xl mb-1">{step.title}</h3>
+                  <p className="text-slate-600">{step.text}</p>
                 </div>
               </div>
             ))}
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Налоговый режим</label>
-              <select
-                value={String(form.tax_mode)}
-                onChange={(e) => setForm({ ...form, tax_mode: e.target.value })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
-              >
-                <option value="none">Без налога</option>
-                <option value="self_employed">Самозанятый (6%)</option>
-                <option value="usn_6">УСН «Доходы» (6%)</option>
-                <option value="usn_15">УСН «Доходы − Расходы» (15%)</option>
-                <option value="osno">ОСНО (20%)</option>
-              </select>
-            </div>
-
-            <button
-              onClick={calculate}
-              disabled={loading}
-              className={`w-full text-white font-semibold py-3 rounded-lg transition ${marketplace === 'wb' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} disabled:bg-slate-400`}
-            >
-              {loading ? 'Считаем…' : 'Рассчитать'}
-            </button>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
-                {error}
-              </div>
-            )}
-          </section>
-
-          <section className="bg-white rounded-2xl shadow p-6">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">Результат</h2>
-
-            {!result && (
-              <p className="text-slate-500 text-sm">Заполни форму слева и нажми «Рассчитать»</p>
-            )}
-
-            {result && (
-              <div className="space-y-5">
-                <div className="bg-slate-50 rounded-xl p-4">
-                  <div className="text-sm text-slate-500">Прибыль с единицы</div>
-                  <div className={`text-3xl font-bold ${Number(result.profit_per_unit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {result.profit_per_unit} ₽
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <Metric label="Маржа" value={`${result.margin_percent}%`} />
-                  <Metric label="ROI" value={`${result.roi_percent}%`} />
-                  <Metric label="Приб. всего" value={`${result.profit_total} ₽`} />
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-700 mb-2">Водопад расходов</h3>
-                  <div className="space-y-1 text-sm">
-                    <Row label="Выручка" value={result.revenue} positive />
-                    <Row label="Комиссия" value={result.commission} />
-                    <Row label="Эквайринг" value={result.acquiring} />
-                    <Row label="Логистика" value={result.logistics} />
-                    {result.last_mile !== undefined && <Row label="Последняя миля" value={result.last_mile} />}
-                    <Row label="Хранение" value={result.storage} />
-                    <Row label="Реклама" value={result.ads} />
-                    <Row label="Себестоимость" value={result.cost_price} />
-                    <Row label="Упаковка" value={result.packaging} />
-                    <Row label="Возвраты" value={result.returns_loss} />
-                    <Row label="Налог" value={result.tax} />
-                  </div>
-                </div>
-
-                <div className="border-t pt-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Точка безубыточности</span>
-                    <span className="font-semibold">{result.break_even_price} ₽</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Максимальная скидка</span>
-                    <span className="font-semibold">{result.max_discount_percent}%</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
+          </div>
         </div>
-      </div>
-    </main>
-  );
-}
+      </section>
 
-function Field({ label, value, onChange, type = 'number' }: { label: string; value: string | number; onChange: (v: string) => void; type?: string }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
-      />
-    </div>
-  );
-}
+      {/* CTA */}
+      <section className="bg-gradient-to-br from-blue-600 to-purple-600 py-20">
+        <div className="max-w-3xl mx-auto px-6 text-center text-white">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Узнайте реальную прибыль прямо сейчас</h2>
+          <p className="text-blue-100 mb-8">Бесплатно. Без регистрации. Без ограничений.</p>
+          <Link
+            href="/calculator"
+            className="inline-block bg-white text-blue-700 font-semibold px-8 py-4 rounded-xl text-lg hover:bg-blue-50 transition"
+          >
+            Открыть калькулятор →
+          </Link>
+        </div>
+      </section>
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-slate-50 rounded-lg p-3 text-center">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="font-semibold text-slate-800">{value}</div>
-    </div>
-  );
-}
+      {/* ФУТЕР */}
+      <footer className="border-t border-slate-200 py-8">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
+          <div>© 2025 Юнит-Фокус. Юнит-экономика для маркетплейсов.</div>
+          <div className="flex gap-6">
+            <Link href="/calculator" className="hover:text-slate-900">Калькулятор</Link>
+            <a href="#" className="hover:text-slate-900">Контакты</a>
+          </div>
+        </div>
+      </footer>
 
-function Row({ label, value, positive = false }: { label: string; value: string; positive?: boolean }) {
-  return (
-    <div className="flex justify-between py-1">
-      <span className="text-slate-600">{label}</span>
-      <span className={positive ? 'text-green-600 font-medium' : 'text-slate-800'}>
-        {positive ? '+' : '−'} {value} ₽
-      </span>
     </div>
   );
 }
