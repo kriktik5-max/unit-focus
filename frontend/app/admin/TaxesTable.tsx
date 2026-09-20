@@ -5,11 +5,11 @@ import { Tax, formatNumber, updateTax } from './api';
 
 export function TaxesTable({
   taxes,
-  password,
+  token,
   onUpdate,
 }: {
   taxes: Tax[];
-  password: string;
+  token: string;
   onUpdate: (t: Tax) => void;
 }) {
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -32,7 +32,7 @@ export function TaxesTable({
     setSaving(true);
     setError(null);
     try {
-      const updated = await updateTax(password, t.id, Number(editRate));
+      const updated = await updateTax(token, t.id, Number(editRate));
       onUpdate(updated);
       setEditingId(null);
     } catch (e) {

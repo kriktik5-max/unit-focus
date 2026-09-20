@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Tariff, Tax, getTariffs, getTaxes } from './api';
+import { Tariff, Tax, getTariffs, getTaxes, login, logout } from './api';
 import { TariffsTable } from './TariffsTable';
 import { TaxesTable } from './TaxesTable';
 
 type Tab = 'tariffs' | 'taxes';
 
 export default function AdminPage() {
-  const [password, setPassword] = useState('');
+  const [token, setToken] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [taxes, setTaxes] = useState<Tax[]>([]);
@@ -18,46 +18,55 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('uf_admin_pw');
-      if (saved) {
-        setPassword(saved);
-      }
+      const saved = sessionStorage.getItem('uf_admin_token');
+      if (saved) setToken(saved);
     }
   }, []);
 
   useEffect(() => {
-    if (!password) return;
+    if (!token) return;
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [password]);
+  }, [token]);
 
   const loadAll = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [t, x] = await Promise.all([getTariffs(password), getTaxes(password)]);
+      const [t, x] = await Promise.all([getTariffs(token), getTaxes(token)]);
       setTariffs(t);
       setTaxes(x);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка');
-      setPassword('');
-      sessionStorage.removeItem('uf_admin_pw');
+      // Если токен невалиден — выкидываем на форму логина
+      sessionStorage.removeItem('uf_admin_token');
+      setToken('');
     } finally {
       setLoading(false);
     }
   };
 
-  const login = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passwordInput) return;
-    sessionStorage.setItem('uf_admin_pw', passwordInput);
-    setPassword(passwordInput);
-    setPasswordInput('');
+    setLoading(true);
+    setError(null);
+    try {
+      const newToken = await login(passwordInput);
+      sessionStorage.setItem('uf_admin_token', newToken);
+      setToken(newToken);
+      setPasswordInput('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка входа');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const logout = () => {
-    sessionStorage.removeItem('uf_admin_pw');
-    setPassword('');
+  const handleLogout = async () => {
+    await logout(token);
+    sessionStorage.removeItem('uf_admin_token');
+    setToken('');
     setTariffs([]);
     setTaxes([]);
   };
@@ -70,7 +79,7 @@ export default function AdminPage() {
     setTaxes(taxes.map((t) => (t.id === updated.id ? updated : t)));
   };
 
-  if (!password) {
+  if (!token) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
@@ -80,7 +89,7 @@ export default function AdminPage() {
           <p className="text-slate-500 text-sm mb-6">
             Введите пароль администратора
           </p>
-          <form onSubmit={login} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
             <input
               type="password"
               value={passwordInput}
@@ -88,12 +97,14 @@ export default function AdminPage() {
               placeholder="Пароль"
               className="w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
               autoFocus
+              disabled={loading}
             />
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold py-3 rounded-lg transition"
             >
-              Войти
+              {loading ? 'Проверяю...' : 'Войти'}
             </button>
           </form>
           {error && (
@@ -117,10 +128,7 @@ export default function AdminPage() {
       <div className="max-w-5xl mx-auto">
         <header className="mb-6 flex items-center justify-between">
           <div>
-            <a
-              href="/"
-              className="text-sm text-slate-500 hover:text-slate-800"
-            >
+            <a href="/" className="text-sm text-slate-500 hover:text-slate-800">
               ← На главную
             </a>
             <h1 className="text-3xl font-bold text-slate-900 mt-2">
@@ -128,7 +136,7 @@ export default function AdminPage() {
             </h1>
           </div>
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="text-sm text-slate-500 hover:text-slate-800"
           >
             Выйти
@@ -169,23 +177,18 @@ export default function AdminPage() {
         {!loading && tab === 'tariffs' && (
           <TariffsTable
             tariffs={tariffs}
-            password={password}
+            token={token}
             onUpdate={updateTariffLocal}
           />
         )}
 
         {!loading && tab === 'taxes' && (
-          <TaxesTable
-            taxes={taxes}
-            password={password}
-            onUpdate={updateTaxLocal}
-          />
+          <TaxesTable taxes={taxes} token={token} onUpdate={updateTaxLocal} />
         )}
 
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
           💡 <strong>Как это работает:</strong> изменения сразу сохраняются в
-          базу данных. Калькулятор использует эти значения, но пока подгружает
-          их из кода. Следующий шаг — переключить калькулятор на эти данные.
+          базу данных. Калькулятор подгружает эти значения из БД.
         </div>
       </div>
     </main>

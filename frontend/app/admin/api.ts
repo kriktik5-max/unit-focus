@@ -23,19 +23,46 @@ export const MP_LABELS: Record<string, string> = {
   yandex_fby: 'Яндекс Маркет FBY',
 };
 
-/** Форматирует значение: 2.2000 → 2.2, 50.0000 → 50, 0.0000 → 0 */
+/** Форматирует значение: 2.2000 → 2.2, 50.0000 → 50 */
 export function formatNumber(value: string | number): string {
   const n = typeof value === 'string' ? parseFloat(value) : value;
   if (!isFinite(n)) return String(value);
   return String(n);
 }
 
-async function req<T>(path: string, password: string, init?: RequestInit): Promise<T> {
+/** Логин: получает токен сессии по паролю. */
+export async function login(password: string): Promise<string> {
+  const res = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Ошибка ${res.status}`);
+  }
+  const data: { token: string } = await res.json();
+  return data.token;
+}
+
+/** Логаут: убивает сессию на сервере. Ошибки игнорируем — токен всё равно локально удалим. */
+export async function logout(token: string): Promise<void> {
+  try {
+    await fetch(`${API}/auth/logout`, {
+      method: 'POST',
+      headers: { 'X-Admin-Token': token },
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+async function req<T>(path: string, token: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      'X-Admin-Password': password,
+      'X-Admin-Token': token,
       ...(init?.headers ?? {}),
     },
   });
@@ -46,37 +73,37 @@ async function req<T>(path: string, password: string, init?: RequestInit): Promi
   return res.json();
 }
 
-export async function getTariffs(password: string): Promise<Tariff[]> {
-  return req('/tariffs', password);
+export async function getTariffs(token: string): Promise<Tariff[]> {
+  return req('/tariffs', token);
 }
 
 export async function updateTariff(
-  password: string,
+  token: string,
   id: number,
   value: number,
   description?: string
 ): Promise<Tariff> {
   const body: { value: number; description?: string } = { value };
   if (description !== undefined) body.description = description;
-  return req(`/tariffs/${id}`, password, {
+  return req(`/tariffs/${id}`, token, {
     method: 'PUT',
     body: JSON.stringify(body),
   });
 }
 
-export async function getTaxes(password: string): Promise<Tax[]> {
-  return req('/taxes', password);
+export async function getTaxes(token: string): Promise<Tax[]> {
+  return req('/taxes', token);
 }
 
 export async function updateTax(
-  password: string,
+  token: string,
   id: number,
   rate_percent: number,
   name?: string
 ): Promise<Tax> {
   const body: { rate_percent: number; name?: string } = { rate_percent };
   if (name !== undefined) body.name = name;
-  return req(`/taxes/${id}`, password, {
+  return req(`/taxes/${id}`, token, {
     method: 'PUT',
     body: JSON.stringify(body),
   });

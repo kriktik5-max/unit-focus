@@ -5,11 +5,11 @@ import { Tariff, MP_LABELS, formatNumber, updateTariff } from './api';
 
 export function TariffsTable({
   tariffs,
-  password,
+  token,
   onUpdate,
 }: {
   tariffs: Tariff[];
-  password: string;
+  token: string;
   onUpdate: (t: Tariff) => void;
 }) {
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -43,7 +43,7 @@ export function TariffsTable({
     setSaving(true);
     setError(null);
     try {
-      const updated = await updateTariff(password, t.id, Number(editValue));
+      const updated = await updateTariff(token, t.id, Number(editValue));
       onUpdate(updated);
       setEditingId(null);
     } catch (e) {
