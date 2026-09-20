@@ -18,6 +18,9 @@ import { Field, Metric, Row } from './components';
 import { loadDefaults } from './loadDefaults';
 
 type Result = {
+  selling_price?: string;
+  effective_price?: string;
+  spp_percent?: string;
   revenue: string;
   commission: string;
   acquiring: string;
@@ -225,9 +228,7 @@ export default function Calculator() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-500 mt-1">
-                  Доступные ставки зависят от налогового режима
-                </p>
+
               </div>
             </div>
 
@@ -283,6 +284,13 @@ export default function Calculator() {
                     Водопад расходов
                   </h3>
                   <div className="space-y-1 text-sm">
+                    {result.effective_price !== undefined && result.selling_price !== undefined &&
+                     Number(result.effective_price) !== Number(result.selling_price) && (
+                      <div className="flex justify-between py-1">
+                        <span className="text-slate-600">Цена с СПП (платит покупатель)</span>
+                        <span className="text-slate-800">{result.effective_price} ₽</span>
+                      </div>
+                    )}
                     <Row label="Выручка" value={result.revenue} positive />
                     <Row label="Комиссия" value={result.commission} />
                     <Row label="Эквайринг" value={result.acquiring} />

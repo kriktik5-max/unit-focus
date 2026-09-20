@@ -8,7 +8,6 @@ from app.domains.common.tax import TaxMode
 
 class YandexFbyInput(BaseModel):
     name: str = Field(default="Товар", max_length=200)
-
     cost_price: Decimal = Field(gt=0)
     packaging_cost: Decimal = Field(default=Decimal("0"), ge=0)
     selling_price: Decimal = Field(gt=0)
@@ -19,11 +18,9 @@ class YandexFbyInput(BaseModel):
     logistics_per_additional_liter: Decimal = Field(default=Decimal("9"), ge=0)
     logistics_max: Decimal = Field(default=Decimal("5500"), ge=0)
     volume_liters: Decimal = Field(default=Decimal("1"), gt=0)
-
     delivery_percent: Decimal = Field(default=Decimal("5"), ge=0, le=100)
     delivery_max: Decimal = Field(default=Decimal("1000"), ge=0)
     order_processing: Decimal = Field(default=Decimal("25"), ge=0)
-
     storage_cost: Decimal = Field(default=Decimal("0"), ge=0)
     acquiring_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
     ads_cost: Decimal = Field(default=Decimal("0"), ge=0)

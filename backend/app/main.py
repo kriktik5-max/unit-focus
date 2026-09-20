@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.admin import auth as admin_auth
 from app.api.v1.admin import tariffs as admin_tariffs
 from app.api.v1.admin import taxes as admin_taxes
 from app.api.v1.public import tariffs as public_tariffs
@@ -15,7 +16,7 @@ from app.domains.marketplaces.yandex.schemas import YandexFbyInput, YandexFbyOut
 app = FastAPI(
     title="Юнит-Фокус API",
     description="Юнит-экономика для российских маркетплейсов",
-    version="0.5.0",
+    version="0.6.0",
 )
 
 app.add_middleware(
@@ -33,7 +34,7 @@ _yandex_calc = YandexFbyCalculator()
 
 @app.get("/")
 def root():
-    return {"service": "Юнит-Фокус API", "version": "0.5.0", "status": "ok"}
+    return {"service": "Юнит-Фокус API", "version": "0.6.0", "status": "ok"}
 
 
 @app.get("/health")
@@ -41,9 +42,8 @@ def health():
     return {"status": "healthy"}
 
 
-# Публичное чтение тарифов (для калькулятора)
+# Публичные тарифы (для калькулятора)
 app.include_router(public_tariffs.router, prefix="/api/v1")
-
 
 # Расчёты
 @app.post("/api/v1/calculations/wb-fbo", response_model=WbFboOutput)
@@ -61,6 +61,7 @@ def calculate_yandex_fby(payload: YandexFbyInput) -> YandexFbyOutput:
     return _yandex_calc.calculate(payload)
 
 
-# Админка (требует заголовок X-Admin-Password)
+# Админка
+app.include_router(admin_auth.router, prefix="/api/v1/admin")
 app.include_router(admin_tariffs.router, prefix="/api/v1/admin")
 app.include_router(admin_taxes.router, prefix="/api/v1/admin")

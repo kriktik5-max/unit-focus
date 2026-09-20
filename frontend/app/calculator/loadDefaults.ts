@@ -21,6 +21,7 @@ export async function loadDefaults(
       'quantity',
       'cost_price',
       'packaging_cost',
+      'spp_percent',
       'volume_liters',
       'tax_mode',
       'vat_rate',

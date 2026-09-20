@@ -8,13 +8,12 @@ from app.domains.common.tax import TaxMode
 
 class OzonFboInput(BaseModel):
     name: str = Field(default="Товар", max_length=200)
-
-    cost_price: Decimal = Field(gt=0, description="Себестоимость за единицу, руб")
+    cost_price: Decimal = Field(gt=0)
     packaging_cost: Decimal = Field(default=Decimal("0"), ge=0)
-    selling_price: Decimal = Field(gt=0, description="Цена продажи, руб")
+    selling_price: Decimal = Field(gt=0)
     quantity: int = Field(default=1, ge=1)
 
-    commission_percent: Decimal = Field(ge=0, le=100, description="Комиссия Ozon, %")
+    commission_percent: Decimal = Field(ge=0, le=100)
     logistics_base: Decimal = Field(default=Decimal("46.77"), ge=0)
     logistics_per_liter: Decimal = Field(default=Decimal("10.17"), ge=0)
     volume_liters: Decimal = Field(default=Decimal("1"), gt=0)
@@ -27,12 +26,7 @@ class OzonFboInput(BaseModel):
     return_utilization_cost: Decimal = Field(default=Decimal("0"), ge=0)
 
     tax_mode: TaxMode = TaxMode.USN_6
-    vat_rate: Decimal = Field(
-        default=Decimal("0"),
-        ge=0,
-        le=100,
-        description="Ставка НДС, %. Доступные значения зависят от налогового режима.",
-    )
+    vat_rate: Decimal = Field(default=Decimal("0"), ge=0, le=100)
 
 
 class OzonFboOutput(BaseModel):

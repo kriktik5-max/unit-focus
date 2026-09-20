@@ -11,8 +11,16 @@ class WbFboInput(BaseModel):
 
     cost_price: Decimal = Field(gt=0, description="Себестоимость за единицу, руб")
     packaging_cost: Decimal = Field(default=Decimal("0"), ge=0)
-    selling_price: Decimal = Field(gt=0, description="Цена продажи, руб")
+    selling_price: Decimal = Field(gt=0, description="Цена продажи (то, что выставил селлер), руб")
     quantity: int = Field(default=1, ge=1)
+
+    # СПП — скидка постоянного покупателя. WB сам снижает цену для покупателя.
+    spp_percent: Decimal = Field(
+        default=Decimal("0"),
+        ge=0,
+        le=90,
+        description="Скидка постоянного покупателя (СПП), %. WB снижает цену покупателю за счёт продавца.",
+    )
 
     commission_percent: Decimal = Field(ge=0, le=100, description="Комиссия WB, %")
     logistics_cost: Decimal = Field(ge=0, description="Логистика WB за единицу, руб")
@@ -23,16 +31,16 @@ class WbFboInput(BaseModel):
     return_rate_percent: Decimal = Field(default=Decimal("0"), ge=0, le=100)
 
     tax_mode: TaxMode = TaxMode.USN_6
-    vat_rate: Decimal = Field(
-        default=Decimal("0"),
-        ge=0,
-        le=100,
-        description="Ставка НДС, %. Доступные значения зависят от налогового режима.",
-    )
+    vat_rate: Decimal = Field(default=Decimal("0"), ge=0, le=100)
 
 
 class WbFboOutput(BaseModel):
-    revenue: Decimal
+    # Цены
+    selling_price: Decimal          # то, что выставил селлер
+    effective_price: Decimal        # то, что платит покупатель (после СПП)
+
+    # Расходы
+    revenue: Decimal                # = effective_price (для удобства)
     commission: Decimal
     acquiring: Decimal
     logistics: Decimal
@@ -49,6 +57,7 @@ class WbFboOutput(BaseModel):
     income_tax: Decimal
     total_tax: Decimal
 
+    # Метрики
     profit_per_unit: Decimal
     margin_percent: Decimal
     roi_percent: Decimal

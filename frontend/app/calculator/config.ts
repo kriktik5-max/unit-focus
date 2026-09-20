@@ -44,6 +44,7 @@ export const WB_SECTIONS: SectionConfig[] = [
   {
     title: 'Расходы Wildberries',
     fields: [
+      { key: 'spp_percent', label: 'СПП (скидка WB), %', half: true },
       { key: 'commission_percent', label: 'Комиссия WB, %', half: true },
       { key: 'logistics_cost', label: 'Логистика, ₽', half: true },
       { key: 'storage_cost', label: 'Хранение, ₽', half: true },
@@ -118,6 +119,7 @@ export const INITIAL_WB: FormData = {
   name: 'Футболка хлопок',
   selling_price: 1000, quantity: 10,
   cost_price: 300, packaging_cost: 20,
+  spp_percent: 0,
   commission_percent: 20, logistics_cost: 80, storage_cost: 10,
   acquiring_percent: 0, ads_cost: 50, return_rate_percent: 0,
   tax_mode: 'usn_6', vat_rate: 0,
