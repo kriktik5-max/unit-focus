@@ -164,6 +164,7 @@ async function authedFetch<T>(path: string): Promise<T | null> {
   if (!token) return null;
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
   });
   if (!res.ok) {
     if (res.status === 401) clearToken();
