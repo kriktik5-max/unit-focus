@@ -134,7 +134,14 @@ def products(
         hour=0, minute=0, second=0, microsecond=0
     )
 
-    q = (
+    filters = [
+        Product.user_id == user.id,
+        SalesDaily.date >= date_from,
+    ]
+    if marketplace != "all":
+        filters.append(Product.marketplace == marketplace)
+
+    rows = (
         db.query(
             Product.id,
             Product.sku,
@@ -145,19 +152,12 @@ def products(
             func.coalesce(func.sum(SalesDaily.orders), 0).label("orders"),
         )
         .join(SalesDaily, SalesDaily.product_id == Product.id)
-        .filter(
-            Product.user_id == user.id,
-            SalesDaily.date >= date_from,
-        )
+        .filter(*filters)
         .group_by(Product.id, Product.sku, Product.name, Product.marketplace)
         .order_by(func.sum(SalesDaily.revenue).desc())
         .limit(limit)
+        .all()
     )
-
-    if marketplace != "all":
-        q = q.filter(Product.marketplace == marketplace)
-
-    rows = q.all()
 
     products_out = []
     for row in rows:

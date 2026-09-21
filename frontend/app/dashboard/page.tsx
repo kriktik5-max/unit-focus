@@ -52,14 +52,24 @@ export default function DashboardPage() {
 
   useEffect(() => {
     (async () => {
-      const s = await fetchDashboardSummary(days, mp);
-      if (!s) {
-        router.push('/login');
+      try {
+        const s = await fetchDashboardSummary(days, mp);
+        if (!s) {
+          router.push('/login');
+          return;
+        }
+        setSummary(s);
+      } catch (e) {
+        console.error('summary error:', e);
+        setLoading(false);
         return;
       }
-      const p = await fetchDashboardProducts(days, mp, 20);
-      setSummary(s);
-      setProducts(p);
+      try {
+        const p = await fetchDashboardProducts(days, mp, 20);
+        setProducts(p);
+      } catch (e) {
+        console.error('products error:', e);
+      }
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -39,6 +39,12 @@ export function Header() {
           {mounted && loggedIn ? (
             <>
               <Link
+                href="/dashboard"
+                className="text-sm font-medium text-slate-700 hover:text-slate-900"
+              >
+                Дашборд
+              </Link>
+              <Link
                 href="/account"
                 className="text-sm font-medium text-slate-700 hover:text-slate-900"
               >

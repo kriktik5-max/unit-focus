@@ -59,12 +59,20 @@ export default function AccountPage() {
             </Link>
             <h1 className="text-3xl font-bold text-slate-900 mt-2">Личный кабинет</h1>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-slate-500 hover:text-slate-800"
-          >
-            Выйти
-          </button>
+          <div className="flex gap-4 items-center">
+            <Link
+              href="/dashboard"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+            >
+              Открыть дашборд →
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-slate-500 hover:text-slate-800"
+            >
+              Выйти
+            </button>
+          </div>
         </header>
 
         {/* Профиль */}

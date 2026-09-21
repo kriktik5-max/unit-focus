@@ -177,7 +177,8 @@ export async function fetchDashboardSummary(
   days: number,
   marketplace: string
 ): Promise<DashboardSummary | null> {
-  return authedFetch(`/api/v1/dashboard/summary?days=${days}&marketplace=${marketplace}`);
+  const url = `/api/v1/dashboard/summary?days=${days}&marketplace=${marketplace}&_t=${Date.now()}`;
+  return authedFetch(url);
 }
 
 export async function fetchDashboardProducts(
@@ -185,7 +186,6 @@ export async function fetchDashboardProducts(
   marketplace: string,
   limit = 20
 ): Promise<DashboardProducts | null> {
-  return authedFetch(
-    `/api/v1/dashboard/products?days=${days}&marketplace=${marketplace}&limit=${limit}`
-  );
+  const url = `/api/v1/dashboard/products?days=${days}&marketplace=${marketplace}&limit=${limit}&_t=${Date.now()}`;
+  return authedFetch(url);
 }
