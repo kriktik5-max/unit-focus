@@ -49,12 +49,12 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
   const [mp, setMp] = useState('all');
-  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [breakdown, setBreakdown] = useState<'none' | 'profit' | 'revenue' | 'margin'>('none');
 
   // Разбивка по МП имеет смысл только когда фильтр = "Все"
   useEffect(() => {
     if (mp !== 'all') {
-      setShowBreakdown(false);
+      setBreakdown('none');
     }
   }, [mp]);
 
@@ -157,7 +157,7 @@ export default function DashboardPage() {
                   color="purple"
                 />
                 <KpiCard
-                  label="Маржа"
+                  label="Маржинальность"
                   value={`${summary.kpi.margin_percent}%`}
                   color="amber"
                 />
@@ -170,21 +170,50 @@ export default function DashboardPage() {
                     Динамика за {days} дней
                   </h2>
                   {mp === 'all' && (
-                    <button
-                      onClick={() => setShowBreakdown(!showBreakdown)}
-                      className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
-                        showBreakdown
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      {showBreakdown ? '✓ ' : ''}Прибыль по маркетплейсам
-                    </button>
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => setBreakdown(breakdown === 'revenue' ? 'none' : 'revenue')}
+                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
+                          breakdown === 'revenue'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {breakdown === 'revenue' ? '✓ ' : ''}Выручка по МП
+                      </button>
+                      <button
+                        onClick={() => setBreakdown(breakdown === 'profit' ? 'none' : 'profit')}
+                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
+                          breakdown === 'profit'
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {breakdown === 'profit' ? '✓ ' : ''}Прибыль по МП
+                      </button>
+                      <button
+                        onClick={() => setBreakdown(breakdown === 'margin' ? 'none' : 'margin')}
+                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
+                          breakdown === 'margin'
+                            ? 'bg-orange-600 text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {breakdown === 'margin' ? '✓ ' : ''}Маржинальность по МП
+                      </button>
+                    </div>
                   )}
                 </div>
                 {summary.daily.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={summary.daily}>
+                    <LineChart
+                      data={summary.daily.map((d) => ({
+                        ...d,
+                        margin_wb: d.revenue_wb > 0 ? (d.profit_wb / d.revenue_wb) * 100 : 0,
+                        margin_ozon: d.revenue_ozon > 0 ? (d.profit_ozon / d.revenue_ozon) * 100 : 0,
+                        margin_yandex: d.revenue_yandex > 0 ? (d.profit_yandex / d.revenue_yandex) * 100 : 0,
+                      }))}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis
                         dataKey="date"
@@ -194,25 +223,37 @@ export default function DashboardPage() {
                       <YAxis
                         tick={{ fontSize: 12, fill: '#64748b' }}
                         tickFormatter={(v) =>
-                          v >= 1000 ? `${Math.round(v / 1000)}к` : v
+                          breakdown === 'margin'
+                            ? `${v.toFixed(0)}%`
+                            : v >= 1000
+                            ? `${Math.round(v / 1000)}к`
+                            : v
                         }
                       />
                       <Tooltip
                         formatter={(value) =>
-                          typeof value === 'number' ? formatMoney(value) : String(value)
+                          typeof value === 'number'
+                            ? breakdown === 'margin'
+                              ? `${value.toFixed(1)}%`
+                              : formatMoney(value)
+                            : String(value)
                         }
                         labelFormatter={(l) => `Дата: ${l}`}
                       />
                       <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        name="Выручка"
-                        stroke="#2563eb"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      {!showBreakdown && (
+                      {/* Общая выручка — если НЕ включены «Выручка по МП» или «Маржа по МП» */}
+                      {breakdown !== 'revenue' && breakdown !== 'margin' && (
+                        <Line
+                          type="monotone"
+                          dataKey="revenue"
+                          name="Выручка"
+                          stroke="#2563eb"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      )}
+                      {/* Общая прибыль — если НЕ включены «Прибыль по МП» или «Маржа по МП» */}
+                      {breakdown !== 'profit' && breakdown !== 'margin' && (
                         <Line
                           type="monotone"
                           dataKey="profit"
@@ -222,32 +263,28 @@ export default function DashboardPage() {
                           dot={false}
                         />
                       )}
-                      {showBreakdown && (
+                      {/* Выручка по МП */}
+                      {breakdown === 'revenue' && (
                         <>
-                          <Line
-                            type="monotone"
-                            dataKey="profit_wb"
-                            name="Прибыль WB"
-                            stroke="#7c3aed"
-                            strokeWidth={2}
-                            dot={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="profit_ozon"
-                            name="Прибыль Ozon"
-                            stroke="#0284c7"
-                            strokeWidth={2}
-                            dot={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="profit_yandex"
-                            name="Прибыль Яндекс"
-                            stroke="#eab308"
-                            strokeWidth={2}
-                            dot={false}
-                          />
+                          <Line type="monotone" dataKey="revenue_wb" name="Выручка WB" stroke="#7c3aed" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="revenue_ozon" name="Выручка Ozon" stroke="#0284c7" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="revenue_yandex" name="Выручка Яндекс" stroke="#eab308" strokeWidth={2} dot={false} />
+                        </>
+                      )}
+                      {/* Прибыль по МП */}
+                      {breakdown === 'profit' && (
+                        <>
+                          <Line type="monotone" dataKey="profit_wb" name="Прибыль WB" stroke="#7c3aed" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="profit_ozon" name="Прибыль Ozon" stroke="#0284c7" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="profit_yandex" name="Прибыль Яндекс" stroke="#eab308" strokeWidth={2} dot={false} />
+                        </>
+                      )}
+                      {/* Маржа по МП */}
+                      {breakdown === 'margin' && (
+                        <>
+                          <Line type="monotone" dataKey="margin_wb" name="Маржинальность WB" stroke="#7c3aed" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="margin_ozon" name="Маржинальность Ozon" stroke="#0284c7" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="margin_yandex" name="Маржинальность Яндекс" stroke="#eab308" strokeWidth={2} dot={false} />
                         </>
                       )}
                     </LineChart>
@@ -274,7 +311,7 @@ export default function DashboardPage() {
                         <th className="text-right px-3 py-2 font-medium">Заказы</th>
                         <th className="text-right px-3 py-2 font-medium">Выручка</th>
                         <th className="text-right px-3 py-2 font-medium">Прибыль</th>
-                        <th className="text-right px-3 py-2 font-medium">Маржа</th>
+                        <th className="text-right px-3 py-2 font-medium">Маржинальность</th>
                       </tr>
                     </thead>
                     <tbody>

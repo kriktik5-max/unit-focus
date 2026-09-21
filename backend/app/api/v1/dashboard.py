@@ -28,6 +28,9 @@ class DailyPoint(BaseModel):
     date: str  # YYYY-MM-DD
     revenue: float
     profit: float
+    revenue_wb: float = 0
+    revenue_ozon: float = 0
+    revenue_yandex: float = 0
     profit_wb: float = 0
     profit_ozon: float = 0
     profit_yandex: float = 0
@@ -123,15 +126,19 @@ def summary(
         if d not in by_date:
             by_date[d] = {
                 "date": d, "revenue": 0.0, "profit": 0.0,
+                "revenue_wb": 0.0, "revenue_ozon": 0.0, "revenue_yandex": 0.0,
                 "profit_wb": 0.0, "profit_ozon": 0.0, "profit_yandex": 0.0,
             }
         by_date[d]["revenue"] += float(row.revenue)
         by_date[d]["profit"] += float(row.profit)
         if row.mp == "wb":
+            by_date[d]["revenue_wb"] += float(row.revenue)
             by_date[d]["profit_wb"] += float(row.profit)
         elif row.mp == "ozon":
+            by_date[d]["revenue_ozon"] += float(row.revenue)
             by_date[d]["profit_ozon"] += float(row.profit)
         elif row.mp == "yandex":
+            by_date[d]["revenue_yandex"] += float(row.revenue)
             by_date[d]["profit_yandex"] += float(row.profit)
 
     daily = [DailyPoint(**v) for v in by_date.values()]
