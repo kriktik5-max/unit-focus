@@ -83,18 +83,21 @@ def _calc_taxes(
     tax_mode: str,
     vat_rate: float,
     revenue: float,
-    deductible_expenses: float,  # не используется — оставлено для совместимости
+    deductible_expenses: float,  # не используется
     ebitda: float,
 ) -> tuple[float, float, float]:
-    """Возвращает (vat_total, income_tax, net_profit).
+    """Возвращает (vat_output, income_tax, net_profit).
 
-    УПРОЩЁННАЯ МОДЕЛЬ: НДС считается как процент от выручки,
-    БЕЗ вычета входящего НДС. Это ближе к реальности селлера,
-    который не знает точно, кто из поставщиков платит НДС.
+    Логика НДС:
+    - 0%   → НДС не платится
+    - 10%, 22% → есть право на вычет. Мы показываем исходящий НДС,
+                 но НЕ вычитаем его из прибыли (входящий неизвестен)
+    - 5%, 7%   → вычета нет, весь исходящий НДС = к уплате,
+                 уменьшает прибыль
 
-    - vat_total: НДС к уплате = Выручка × ставка / (100 + ставка)
-    - income_tax: налог по режиму
-    - net_profit: EBITDA − vat_total − income_tax
+    - vat_output: исходящий НДС (справочная метрика)
+    - income_tax: налог по режиму (УСН/НПД/ОСНО)
+    - net_profit: EBITDA − НДС к уплате − налог по режиму
     """
     try:
         mode = TaxMode(tax_mode)
@@ -104,35 +107,32 @@ def _calc_taxes(
     vat_r = d(str(vat_rate))
     rev = d(str(revenue))
     eb = d(str(ebitda))
-    ded = d(str(deductible_expenses))
-
-    # Определяем, доступен ли вычет по НК РФ
-    # Вычет: только на стандартных ставках 10% и 22% (плюс 0% = нет НДС)
-    # Без вычета: льготные ставки УСН 5% и 7%
     vat_rate_int = int(vat_rate)
-    can_deduct = vat_rate_int in (0, 10, 22)
 
+    # Исходящий НДС — всегда справочно
+    if vat_r > ZERO:
+        vat_output = rev * vat_r / (d("100") + vat_r)
+    else:
+        vat_output = ZERO
+
+    # НДС к уплате (уменьшает прибыль)
+    DEDUCTIBLE_RATES = {10, 22}
     if vat_rate_int == 0:
         vat_payable = ZERO
-    elif can_deduct:
-        # С вычетом: к уплате разница между исходящим и входящим
-        vat_output_inner = rev * vat_r / (d("100") + vat_r)
-        vat_input_inner = ded * vat_r / (d("100") + vat_r)
-        vat_payable = vat_output_inner - vat_input_inner
+    elif vat_rate_int in DEDUCTIBLE_RATES:
+        vat_payable = ZERO
     else:
-        # Без вычета (5%, 7%): весь исходящий НДС в бюджет
-        vat_payable = rev * vat_r / (d("100") + vat_r)
-
-    vat_out = vat_payable
+        vat_payable = vat_output
 
     profit_before_income_tax = eb - vat_payable
     income_tax = calculate_income_tax(
-        mode=mode, revenue=rev, vat_output=vat_out,
+        mode=mode, revenue=rev, vat_output=vat_output,
         profit_before_income_tax=profit_before_income_tax,
     )
 
     net = profit_before_income_tax - income_tax
-    return float(vat_payable), float(income_tax), float(net)
+    return float(vat_output), float(income_tax), float(net)
+
 
 
 # ============================================================

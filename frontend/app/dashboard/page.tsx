@@ -138,22 +138,60 @@ export default function DashboardPage() {
           {!loading && summary && (
             <>
               <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-                <div className="bg-white rounded-2xl shadow-sm p-5">
-                  <div className="text-sm text-slate-500 mb-1">Выручка</div>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {formatMoney(summary.kpi.revenue)}
-                  </div>
-                  {summary.vat_rate > 0 && (
-                    <div className="text-xs text-slate-500 mt-1">
-                      без НДС: {formatMoney(summary.kpi.revenue_net)}
-                    </div>
-                  )}
-                </div>
-                <KpiCard label="EBITDA" value={formatMoney(summary.kpi.ebitda)} color="purple" />
-                <KpiCard label={vatLabel(summary.vat_rate)} value={formatMoney(summary.kpi.vat)} color="rose" />
-                <KpiCard label={taxLabel(summary.tax_mode)} value={formatMoney(summary.kpi.income_tax)} color="slate" />
-                <KpiCard label="Чистая прибыль" value={formatMoney(summary.kpi.net_profit)} color="green" />
-                <KpiCard label="Чистая маржинальность" value={`${summary.kpi.margin_percent}%`} color="amber" />
+                <KpiCard
+                  label="Выручка"
+                  value={formatMoney(summary.kpi.revenue)}
+                  color="blue"
+                  subtitle={summary.vat_rate > 0 ? `без НДС: ${formatMoney(summary.kpi.revenue_net)}` : undefined}
+                  formula={
+                    summary.vat_rate > 0
+                      ? `Σ всех продаж за период (с НДС):\n${formatMoney(summary.kpi.revenue)}\n\nВыручка без НДС = Выручка / (1 + ${summary.vat_rate}/100):\n${formatMoney(summary.kpi.revenue)} / (1 + ${summary.vat_rate}/100) = ${formatMoney(summary.kpi.revenue_net)}`
+                      : `Σ всех продаж за период:\n${formatMoney(summary.kpi.revenue)}`
+                  }
+                />
+                <KpiCard
+                  label="EBITDA"
+                  value={formatMoney(summary.kpi.ebitda)}
+                  color="purple"
+                  formula={
+                    `Прибыль до налогов (операционная эффективность)\n\n` +
+                    `EBITDA = Выручка − Комиссия − Логистика − Хранение − Реклама − Себестоимость\n\n` +
+                    `= ${formatMoney(summary.kpi.ebitda)}\n\n` +
+                    `НЕ включает: НДС, налог по режиму`
+                  }
+                />
+                <KpiCard
+                  label={vatLabel(summary.vat_rate)}
+                  value={formatMoney(summary.kpi.vat)}
+                  color="rose"
+                  formula={vatFormula(summary.vat_rate, summary.kpi.revenue, summary.kpi.vat)}
+                />
+                <KpiCard
+                  label={taxLabel(summary.tax_mode)}
+                  value={formatMoney(summary.kpi.income_tax)}
+                  color="slate"
+                  formula={taxFormula(summary.tax_mode, summary.kpi.revenue_net, summary.kpi.ebitda, summary.kpi.income_tax)}
+                />
+                <KpiCard
+                  label="Чистая прибыль"
+                  value={formatMoney(summary.kpi.net_profit)}
+                  color="green"
+                  formula={
+                    `EBITDA − НДС к уплате − Налог по режиму\n\n` +
+                    `${formatMoney(summary.kpi.ebitda)} − ${formatMoney(vatPayable(summary.vat_rate, summary.kpi.vat))} − ${formatMoney(summary.kpi.income_tax)}\n\n` +
+                    `= ${formatMoney(summary.kpi.net_profit)}`
+                  }
+                />
+                <KpiCard
+                  label="Чистая маржинальность"
+                  value={`${summary.kpi.margin_percent}%`}
+                  color="amber"
+                  formula={
+                    `Чистая прибыль / Выручка без НДС × 100%\n\n` +
+                    `${formatMoney(summary.kpi.net_profit)} / ${formatMoney(summary.kpi.revenue_net)} × 100%\n\n` +
+                    `= ${summary.kpi.margin_percent}%`
+                  }
+                />
               </div>
 
               <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
@@ -286,7 +324,8 @@ export default function DashboardPage() {
 
 function vatLabel(rate: number): string {
   if (rate === 0) return 'НДС (не платится)';
-  return `НДС ${rate}% (исходящий)`;
+  if (rate === 10 || rate === 22) return `НДС ${rate}% (к вычету)`;
+  return `НДС ${rate}% к уплате`;
 }
 
 function taxLabel(mode: string): string {
@@ -304,10 +343,14 @@ function KpiCard({
   label,
   value,
   color,
+  subtitle,
+  formula,
 }: {
   label: string;
   value: string;
   color: 'blue' | 'green' | 'purple' | 'amber' | 'rose' | 'slate';
+  subtitle?: string;
+  formula?: string;
 }) {
   const colors: Record<string, string> = {
     blue: 'text-blue-600',
@@ -318,9 +361,58 @@ function KpiCard({
     slate: 'text-slate-700',
   };
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-5">
-      <div className="text-sm text-slate-500 mb-1">{label}</div>
+    <div className="bg-white rounded-2xl shadow-sm p-5 relative group">
+      <div className="flex items-center gap-1 text-sm text-slate-500 mb-1">
+        <span>{label}</span>
+        {formula && (
+          <span className="cursor-help text-slate-300 group-hover:text-slate-600 transition">
+            ⓘ
+          </span>
+        )}
+      </div>
       <div className={`text-2xl font-bold ${colors[color]}`}>{value}</div>
+      {subtitle && (
+        <div className="text-xs text-slate-500 mt-1">{subtitle}</div>
+      )}
+      {formula && (
+        <div className="absolute hidden group-hover:block z-20 top-full left-0 mt-2 bg-slate-900 text-white text-xs rounded-lg p-3 shadow-xl w-80 whitespace-pre-line leading-relaxed">
+          {formula}
+        </div>
+      )}
     </div>
   );
+}
+
+function vatPayable(rate: number, vat: number): number {
+  if (rate === 0) return 0;
+  if (rate === 10 || rate === 22) return 0;
+  return vat;
+}
+
+function vatFormula(rate: number, revenue: number, vat: number): string {
+  if (rate === 0) {
+    return 'На этом режиме НДС не платится';
+  }
+  const base = `Исходящий НДС = Выручка × ${rate} / (100 + ${rate})\n= ${formatMoney(revenue)} × ${rate}/100+${rate}\n= ${formatMoney(vat)}`;
+  if (rate === 10 || rate === 22) {
+    return `${base}\n\nНа ${rate}% есть право на вычет входящего НДС.\nК уплате = Исходящий − Входящий.\nМы показываем исходящий справочно,\nне вычитаем из прибыли.`;
+  }
+  return `${base}\n\nНа льготной ставке ${rate}% (УСН) вычета нет.\nВесь исходящий НДС идёт в бюджет\nи уменьшает чистую прибыль.`;
+}
+
+function taxFormula(mode: string, revenueNet: number, ebitda: number, tax: number): string {
+  if (mode === 'none') return 'На этом режиме налог не платится';
+  if (mode === 'self_employed') {
+    return `НПД = 6% × Выручка без НДС\n= 0.06 × ${formatMoney(revenueNet)}\n= ${formatMoney(tax)}`;
+  }
+  if (mode === 'usn_6') {
+    return `УСН 6% = 6% × Выручка без НДС\n= 0.06 × ${formatMoney(revenueNet)}\n= ${formatMoney(tax)}`;
+  }
+  if (mode === 'usn_15') {
+    return `УСН 15% = 15% × max(EBITDA, 0)\n= 0.15 × ${formatMoney(ebitda)}\n= ${formatMoney(tax)}`;
+  }
+  if (mode === 'osno') {
+    return `Налог на прибыль = 25% × max(EBITDA, 0)\n= 0.25 × ${formatMoney(ebitda)}\n= ${formatMoney(tax)}`;
+  }
+  return '';
 }
