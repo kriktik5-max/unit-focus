@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Plan, Subscription, UsageEvent, User
+from app.models import Plan, Subscription, User
 from app.security import (
     create_access_token,
     decode_token,
@@ -56,19 +56,14 @@ class SubscriptionOut(BaseModel):
     started_at: datetime
     expires_at: datetime | None
     source: str
-
-
-class UsageOut(BaseModel):
-    used_this_month: int
-    limit: int
-    remaining: int | None  # None = безлимит
+    days_left: int | None  # None если безлимитно (платный план)
+    is_active: bool
 
 
 class MeResponse(BaseModel):
     user: UserOut
     plan: PlanOut
     subscription: SubscriptionOut
-    usage: UsageOut
 
 
 class AuthResponse(BaseModel):
@@ -84,7 +79,6 @@ def get_current_user(
     authorization: str = Header(default=""),
     db: Session = Depends(get_db),
 ) -> User:
-    """Достаёт юзера из заголовка Authorization: Bearer <token>."""
     if not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -108,29 +102,12 @@ def get_current_user(
 
 
 # ============================================================
-# Утилита: посчитать использованные расчёты за 30 дней
-# ============================================================
-
-def _usage_this_month(db: Session, user_id: int) -> int:
-    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-    return (
-        db.query(UsageEvent)
-        .filter(
-            UsageEvent.user_id == user_id,
-            UsageEvent.event_type == "calculation",
-            UsageEvent.created_at >= cutoff,
-        )
-        .count()
-    )
-
-
-# ============================================================
 # Эндпоинты
 # ============================================================
 
 @router.post("/register", response_model=AuthResponse, status_code=201)
 def register(payload: UserRegister, db: Session = Depends(get_db)):
-    """Регистрация нового пользователя + автоматическая Free-подписка."""
+    """Регистрация нового пользователя + автоматический пробный доступ на 10 дней."""
     existing = db.query(User).filter_by(email=payload.email.lower()).first()
     if existing:
         raise HTTPException(
@@ -144,16 +121,20 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
         full_name=payload.full_name,
     )
     db.add(user)
-    db.flush()  # получаем user.id
+    db.flush()
 
-    # Автоматически выдаём Free-подписку
-    free_plan = db.query(Plan).filter_by(code="free").first()
-    if free_plan:
+    # Автоматически выдаём пробный доступ на 10 дней
+    trial_plan = db.query(Plan).filter_by(code="free").first()
+    if trial_plan:
+        trial_days = int((trial_plan.limits or {}).get("trial_days", 10))
+        now = datetime.now(timezone.utc)
         db.add(Subscription(
             user_id=user.id,
-            plan_id=free_plan.id,
+            plan_id=trial_plan.id,
             status="active",
-            source="free",
+            source="trial",
+            started_at=now,
+            expires_at=now + timedelta(days=trial_days),
         ))
 
     db.commit()
@@ -186,7 +167,7 @@ def me(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Профиль + подписка + лимиты текущего пользователя."""
+    """Профиль + подписка текущего пользователя."""
     sub = db.query(Subscription).filter_by(user_id=user.id).first()
     if not sub:
         raise HTTPException(status_code=500, detail="У пользователя нет подписки")
@@ -195,9 +176,22 @@ def me(
     if not plan:
         raise HTTPException(status_code=500, detail="План подписки не найден")
 
-    limit = int(plan.limits.get("calculations_per_month", 0))
-    used = _usage_this_month(db, user.id)
-    remaining = None if limit == -1 else max(limit - used, 0)
+    # Считаем оставшиеся дни пробного доступа
+    now = datetime.now(timezone.utc)
+    days_left: int | None = None
+    is_active = True
+
+    if sub.expires_at is not None:
+        exp = sub.expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        delta = exp - now
+        seconds = delta.total_seconds()
+        # Округляем вверх: 9.98 дней → 10
+        import math
+        days_left = max(math.ceil(seconds / 86400), 0)
+        is_active = seconds > 0
+    # если expires_at is None — это платный план, безлимит
 
     return MeResponse(
         user=UserOut.model_validate(user),
@@ -212,11 +206,8 @@ def me(
             started_at=sub.started_at,
             expires_at=sub.expires_at,
             source=sub.source,
-        ),
-        usage=UsageOut(
-            used_this_month=used,
-            limit=limit,
-            remaining=remaining,
+            days_left=days_left,
+            is_active=is_active,
         ),
     )
 

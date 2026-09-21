@@ -8,15 +8,15 @@ from app.models import Plan
 PLANS = [
     {
         "code": "free",
-        "name": "Free",
+        "name": "Пробный доступ",
         "price_monthly": Decimal("0"),
-        "description": "Для знакомства. Базовый расчёт для Wildberries.",
+        "description": "10 дней полного доступа ко всем функциям. Дальше — Pro.",
         "sort_order": 1,
         "limits": {
-            "calculations_per_month": 10,
-            "marketplaces": ["wb_fbo"],
-            "history_days": 7,
-            "export_excel": False,
+            "trial_days": 10,
+            "marketplaces": ["wb_fbo", "ozon_fbo", "yandex_fby"],
+            "history_days": 365,
+            "export_excel": True,
             "api_access": False,
             "priority_support": False,
         },

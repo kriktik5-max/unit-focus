@@ -1,31 +1,12 @@
 import Link from 'next/link';
+import { Header } from './components/Header';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
 
       {/* ШАПКА */}
-      <header className="border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-              UF
-            </div>
-            <span className="font-bold text-lg">Юнит-Фокус</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-8 text-sm text-slate-600">
-            <a href="#features" className="hover:text-slate-900">Возможности</a>
-            <a href="#marketplaces" className="hover:text-slate-900">Маркетплейсы</a>
-            <a href="#how" className="hover:text-slate-900">Как работает</a>
-          </nav>
-          <Link
-            href="/calculator"
-            className="bg-slate-900 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
-          >
-            Открыть калькулятор
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {/* HERO */}
       <section className="max-w-6xl mx-auto px-6 py-20 text-center">
