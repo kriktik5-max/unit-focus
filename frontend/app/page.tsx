@@ -28,12 +28,12 @@ export default function Home() {
           >
             Рассчитать бесплатно →
           </Link>
-          <a
-            href="#how"
-            className="bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold px-8 py-4 rounded-xl text-lg transition"
+          <Link
+            href="/pricing"
+            className="bg-white hover:bg-slate-50 text-slate-900 font-semibold px-8 py-4 rounded-xl text-lg transition border-2 border-slate-200"
           >
-            Как это работает
-          </a>
+            Тарифы
+          </Link>
         </div>
       </section>
 

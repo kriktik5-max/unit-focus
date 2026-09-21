@@ -32,6 +32,7 @@ export function Header() {
           <a href="#features" className="hover:text-slate-900">Возможности</a>
           <a href="#marketplaces" className="hover:text-slate-900">Маркетплейсы</a>
           <a href="#how" className="hover:text-slate-900">Как работает</a>
+          <Link href="/pricing" className="hover:text-slate-900">Тарифы</Link>
         </nav>
 
         <div className="flex items-center gap-3">
