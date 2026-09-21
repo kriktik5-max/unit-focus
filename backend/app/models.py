@@ -142,3 +142,85 @@ class Payment(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+# ============================================================
+# Дашборд: товары, продажи по дням, история импортов
+# ============================================================
+
+class Product(Base):
+    """Товар пользователя."""
+    __tablename__ = "products"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    sku: Mapped[str] = mapped_column(String(128), index=True)
+    name: Mapped[str] = mapped_column(String(500), default="")
+    marketplace: Mapped[str] = mapped_column(String(32), default="")  # wb, ozon, yandex
+    cost_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "sku", "marketplace", name="uq_product_user_sku_mp"),
+    )
+
+    sales: Mapped[list["SalesDaily"]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
+    )
+
+
+class SalesDaily(Base):
+    """Факт продаж товара за один день."""
+    __tablename__ = "sales_daily"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+    # Ключевые цифры за день
+    revenue: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    orders: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Расходы
+    commission: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    logistics: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    storage: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    ads: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    tax: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+
+    # Рассчитанная прибыль (можно пересчитать в любой момент)
+    profit: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    product: Mapped[Product] = relationship(back_populates="sales")
+
+
+class ImportLog(Base):
+    """История загрузок Excel (для будущего импорта)."""
+    __tablename__ = "imports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    filename: Mapped[str] = mapped_column(String(255), default="")
+    marketplace: Mapped[str] = mapped_column(String(32), default="")
+    rows_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    error: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

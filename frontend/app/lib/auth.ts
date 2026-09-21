@@ -117,3 +117,74 @@ export async function logout(): Promise<void> {
   }
   clearToken();
 }
+
+
+// ============================================================
+// Дашборд
+// ============================================================
+
+export type DashboardKpi = {
+  revenue: number;
+  profit: number;
+  orders: number;
+  margin_percent: number;
+};
+
+export type DailyPoint = {
+  date: string;
+  revenue: number;
+  profit: number;
+};
+
+export type DashboardSummary = {
+  kpi: DashboardKpi;
+  daily: DailyPoint[];
+  period_days: number;
+  marketplace: string;
+};
+
+export type ProductRow = {
+  product_id: number;
+  sku: string;
+  name: string;
+  marketplace: string;
+  revenue: number;
+  profit: number;
+  orders: number;
+  margin_percent: number;
+};
+
+export type DashboardProducts = {
+  products: ProductRow[];
+  period_days: number;
+};
+
+async function authedFetch<T>(path: string): Promise<T | null> {
+  const token = getToken();
+  if (!token) return null;
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    if (res.status === 401) clearToken();
+    return null;
+  }
+  return res.json();
+}
+
+export async function fetchDashboardSummary(
+  days: number,
+  marketplace: string
+): Promise<DashboardSummary | null> {
+  return authedFetch(`/api/v1/dashboard/summary?days=${days}&marketplace=${marketplace}`);
+}
+
+export async function fetchDashboardProducts(
+  days: number,
+  marketplace: string,
+  limit = 20
+): Promise<DashboardProducts | null> {
+  return authedFetch(
+    `/api/v1/dashboard/products?days=${days}&marketplace=${marketplace}&limit=${limit}`
+  );
+}

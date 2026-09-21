@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import auth as auth_router
+from app.api.v1 import dashboard as dashboard_router
 from app.api.v1.admin import auth as admin_auth
 from app.api.v1.admin import tariffs as admin_tariffs
 from app.api.v1.admin import taxes as admin_taxes
@@ -55,6 +56,9 @@ app.include_router(public_tariffs.router, prefix="/api/v1")
 
 # Auth: регистрация, вход, профиль
 app.include_router(auth_router.router, prefix="/api/v1")
+
+# Дашборд (требует авторизацию)
+app.include_router(dashboard_router.router, prefix="/api/v1")
 
 # Расчёты
 @app.post("/api/v1/calculations/wb-fbo", response_model=WbFboOutput)
