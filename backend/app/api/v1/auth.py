@@ -36,6 +36,8 @@ class UserOut(BaseModel):
     id: int
     email: str
     full_name: str
+    tax_mode: str
+    vat_rate: float
 
     class Config:
         from_attributes = True
@@ -58,6 +60,11 @@ class SubscriptionOut(BaseModel):
     source: str
     days_left: int | None  # None если безлимитно (платный план)
     is_active: bool
+
+
+class UpdateSettingsRequest(BaseModel):
+    tax_mode: str = Field(pattern="^(none|self_employed|usn_6|usn_15|osno)$")
+    vat_rate: float = Field(ge=0, le=30)
 
 
 class MeResponse(BaseModel):
@@ -210,6 +217,21 @@ def me(
             is_active=is_active,
         ),
     )
+
+
+@router.put("/me/settings", response_model=UserOut)
+def update_settings(
+    payload: UpdateSettingsRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Обновление налогового режима и ставки НДС."""
+    user.tax_mode = payload.tax_mode
+    from decimal import Decimal
+    user.vat_rate = Decimal(str(payload.vat_rate))
+    db.commit()
+    db.refresh(user)
+    return UserOut.model_validate(user)
 
 
 @router.post("/logout")

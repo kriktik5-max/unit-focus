@@ -6,6 +6,8 @@ export type User = {
   id: number;
   email: string;
   full_name: string;
+  tax_mode: string;
+  vat_rate: number;
 };
 
 export type Plan = {
@@ -118,6 +120,24 @@ export async function logout(): Promise<void> {
   clearToken();
 }
 
+export async function updateSettings(
+  taxMode: string,
+  vatRate: number
+): Promise<User | null> {
+  const token = getToken();
+  if (!token) return null;
+  const res = await fetch(`${API_BASE}/api/v1/auth/me/settings`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ tax_mode: taxMode, vat_rate: vatRate }),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 
 // ============================================================
 // Дашборд
@@ -125,7 +145,12 @@ export async function logout(): Promise<void> {
 
 export type DashboardKpi = {
   revenue: number;
-  profit: number;
+  revenue_net: number;
+  ebitda: number;
+  tax_total: number;
+  vat: number;
+  income_tax: number;
+  net_profit: number;
   orders: number;
   margin_percent: number;
 };
@@ -133,13 +158,14 @@ export type DashboardKpi = {
 export type DailyPoint = {
   date: string;
   revenue: number;
-  profit: number;
+  ebitda: number;
+  net_profit: number;
   revenue_wb: number;
   revenue_ozon: number;
   revenue_yandex: number;
-  profit_wb: number;
-  profit_ozon: number;
-  profit_yandex: number;
+  ebitda_wb: number;
+  ebitda_ozon: number;
+  ebitda_yandex: number;
 };
 
 export type DashboardSummary = {
@@ -147,6 +173,8 @@ export type DashboardSummary = {
   daily: DailyPoint[];
   period_days: number;
   marketplace: string;
+  tax_mode: string;
+  vat_rate: number;
 };
 
 export type ProductRow = {
@@ -155,7 +183,7 @@ export type ProductRow = {
   name: string;
   marketplace: string;
   revenue: number;
-  profit: number;
+  ebitda: number;
   orders: number;
   margin_percent: number;
 };

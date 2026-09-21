@@ -61,6 +61,14 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     full_name: Mapped[str] = mapped_column(String(255), default="")
+    # Налоговый режим: none, self_employed, usn_6, usn_15, osno
+    tax_mode: Mapped[str] = mapped_column(
+        String(32), server_default="usn_6", default="usn_6"
+    )
+    # Ставка НДС: 0, 5, 7, 10, 22 (зависит от режима)
+    vat_rate: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), server_default="0", default=Decimal("0")
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(

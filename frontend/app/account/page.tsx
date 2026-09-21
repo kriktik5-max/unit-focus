@@ -3,12 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { MeResponse, fetchMe, logout } from '../lib/auth';
+import { MeResponse, fetchMe, logout, updateSettings } from '../lib/auth';
 
 export default function AccountPage() {
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [taxMode, setTaxMode] = useState('usn_6');
+  const [vatRate, setVatRate] = useState(0);
+  const [taxSaving, setTaxSaving] = useState(false);
+  const [taxSaved, setTaxSaved] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -18,6 +22,8 @@ export default function AccountPage() {
         return;
       }
       setMe(data);
+      setTaxMode(data.user.tax_mode || 'usn_6');
+      setVatRate(data.user.vat_rate || 0);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -26,6 +32,18 @@ export default function AccountPage() {
   const handleLogout = async () => {
     await logout();
     router.push('/');
+  };
+
+  const handleSaveTax = async () => {
+    setTaxSaving(true);
+    setTaxSaved(false);
+    const updated = await updateSettings(taxMode, vatRate);
+    if (updated && me) {
+      setMe({ ...me, user: { ...me.user, tax_mode: updated.tax_mode, vat_rate: updated.vat_rate } });
+      setTaxSaved(true);
+      setTimeout(() => setTaxSaved(false), 3000);
+    }
+    setTaxSaving(false);
   };
 
   if (loading) {
@@ -93,6 +111,76 @@ export default function AccountPage() {
               <span className="text-slate-600">ID</span>
               <span className="font-mono text-slate-700">#{me.user.id}</span>
             </div>
+          </div>
+        </section>
+
+        {/* Налоговый режим */}
+        <section className="bg-white rounded-2xl shadow p-6 mb-6">
+          <h2 className="text-lg font-semibold text-slate-800 mb-1">Налоговый режим</h2>
+          <p className="text-slate-500 text-sm mb-4">
+            Влияет на расчёт чистой прибыли в дашборде
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Режим налогообложения
+              </label>
+              <select
+                value={taxMode}
+                onChange={(e) => setTaxMode(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="none">Без налога</option>
+                <option value="self_employed">Самозанятый (НПД 6%)</option>
+                <option value="usn_6">УСН «Доходы» (6%)</option>
+                <option value="usn_15">УСН «Доходы − Расходы» (15%)</option>
+                <option value="osno">ОСНО (налог на прибыль 25%)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Ставка НДС
+              </label>
+              <select
+                value={vatRate}
+                onChange={(e) => setVatRate(Number(e.target.value))}
+                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
+              >
+                <option value={0}>Без НДС (0%)</option>
+                {(taxMode === 'usn_6' || taxMode === 'usn_15') && (
+                  <>
+                    <option value={5}>НДС 5%</option>
+                    <option value={7}>НДС 7%</option>
+                  </>
+                )}
+                {taxMode !== 'self_employed' && taxMode !== 'none' && (
+                  <option value={22}>НДС 22%</option>
+                )}
+                {taxMode === 'osno' && <option value={10}>НДС 10%</option>}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">
+                {taxMode === 'self_employed' || taxMode === 'none'
+                  ? 'На этом режиме НДС не платится'
+                  : taxMode === 'osno'
+                  ? 'ОСНО: доступны 0%, 10%, 22%'
+                  : 'УСН: доступны 0%, 5%, 7%, 22%'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 mt-4">
+            <button
+              onClick={handleSaveTax}
+              disabled={taxSaving}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-medium px-6 py-2 rounded-lg transition text-sm"
+            >
+              {taxSaving ? 'Сохраняю...' : 'Сохранить'}
+            </button>
+            {taxSaved && (
+              <span className="text-sm text-green-600">✓ Сохранено</span>
+            )}
           </div>
         </section>
 

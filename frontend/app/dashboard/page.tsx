@@ -34,11 +34,13 @@ const MP_FILTERS = [
   { code: 'yandex', label: 'Яндекс Маркет' },
 ];
 
-function formatMoney(v: number): string {
+function formatMoney(v: number | undefined | null): string {
+  if (typeof v !== 'number' || !isFinite(v)) return '0 ₽';
   return v.toLocaleString('ru-RU', { maximumFractionDigits: 0 }) + ' ₽';
 }
 
-function formatNumber(v: number): string {
+function formatNumber(v: number | undefined | null): string {
+  if (typeof v !== 'number' || !isFinite(v)) return '0';
   return v.toLocaleString('ru-RU');
 }
 
@@ -51,11 +53,8 @@ export default function DashboardPage() {
   const [mp, setMp] = useState('all');
   const [breakdown, setBreakdown] = useState<'none' | 'profit' | 'revenue' | 'margin'>('none');
 
-  // Разбивка по МП имеет смысл только когда фильтр = "Все"
   useEffect(() => {
-    if (mp !== 'all') {
-      setBreakdown('none');
-    }
+    if (mp !== 'all') setBreakdown('none');
   }, [mp]);
 
   useEffect(() => {
@@ -100,7 +99,6 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {/* ФИЛЬТРЫ */}
           <div className="mb-6 flex flex-wrap gap-3">
             <div className="bg-white rounded-xl shadow-sm p-1 inline-flex">
               {PERIODS.map((p) => (
@@ -137,33 +135,27 @@ export default function DashboardPage() {
 
           {loading && <p className="text-slate-500">Загружаю...</p>}
 
-          {!loading && summary && products && (
+          {!loading && summary && (
             <>
-              {/* KPI КАРТОЧКИ */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <KpiCard
-                  label="Выручка"
-                  value={formatMoney(summary.kpi.revenue)}
-                  color="blue"
-                />
-                <KpiCard
-                  label="Чистая прибыль"
-                  value={formatMoney(summary.kpi.profit)}
-                  color="green"
-                />
-                <KpiCard
-                  label="Заказов"
-                  value={formatNumber(summary.kpi.orders)}
-                  color="purple"
-                />
-                <KpiCard
-                  label="Маржинальность"
-                  value={`${summary.kpi.margin_percent}%`}
-                  color="amber"
-                />
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+                <div className="bg-white rounded-2xl shadow-sm p-5">
+                  <div className="text-sm text-slate-500 mb-1">Выручка</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {formatMoney(summary.kpi.revenue)}
+                  </div>
+                  {summary.vat_rate > 0 && (
+                    <div className="text-xs text-slate-500 mt-1">
+                      без НДС: {formatMoney(summary.kpi.revenue_net)}
+                    </div>
+                  )}
+                </div>
+                <KpiCard label="EBITDA" value={formatMoney(summary.kpi.ebitda)} color="purple" />
+                <KpiCard label={vatLabel(summary.vat_rate)} value={formatMoney(summary.kpi.vat)} color="rose" />
+                <KpiCard label={taxLabel(summary.tax_mode)} value={formatMoney(summary.kpi.income_tax)} color="slate" />
+                <KpiCard label="Чистая прибыль" value={formatMoney(summary.kpi.net_profit)} color="green" />
+                <KpiCard label="Чистая маржинальность" value={`${summary.kpi.margin_percent}%`} color="amber" />
               </div>
 
-              {/* ГРАФИК */}
               <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                   <h2 className="text-lg font-semibold text-slate-800">
@@ -189,31 +181,14 @@ export default function DashboardPage() {
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         }`}
                       >
-                        {breakdown === 'profit' ? '✓ ' : ''}Прибыль по МП
-                      </button>
-                      <button
-                        onClick={() => setBreakdown(breakdown === 'margin' ? 'none' : 'margin')}
-                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
-                          breakdown === 'margin'
-                            ? 'bg-orange-600 text-white'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        {breakdown === 'margin' ? '✓ ' : ''}Маржинальность по МП
+                        {breakdown === 'profit' ? '✓ ' : ''}EBITDA по МП
                       </button>
                     </div>
                   )}
                 </div>
                 {summary.daily.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart
-                      data={summary.daily.map((d) => ({
-                        ...d,
-                        margin_wb: d.revenue_wb > 0 ? (d.profit_wb / d.revenue_wb) * 100 : 0,
-                        margin_ozon: d.revenue_ozon > 0 ? (d.profit_ozon / d.revenue_ozon) * 100 : 0,
-                        margin_yandex: d.revenue_yandex > 0 ? (d.profit_yandex / d.revenue_yandex) * 100 : 0,
-                      }))}
-                    >
+                    <LineChart data={summary.daily}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis
                         dataKey="date"
@@ -223,47 +198,22 @@ export default function DashboardPage() {
                       <YAxis
                         tick={{ fontSize: 12, fill: '#64748b' }}
                         tickFormatter={(v) =>
-                          breakdown === 'margin'
-                            ? `${v.toFixed(0)}%`
-                            : v >= 1000
-                            ? `${Math.round(v / 1000)}к`
-                            : v
+                          v >= 1000 ? `${Math.round(v / 1000)}к` : v
                         }
                       />
                       <Tooltip
                         formatter={(value) =>
-                          typeof value === 'number'
-                            ? breakdown === 'margin'
-                              ? `${value.toFixed(1)}%`
-                              : formatMoney(value)
-                            : String(value)
+                          typeof value === 'number' ? formatMoney(value) : String(value)
                         }
                         labelFormatter={(l) => `Дата: ${l}`}
                       />
                       <Legend />
-                      {/* Общая выручка — если НЕ включены «Выручка по МП» или «Маржа по МП» */}
-                      {breakdown !== 'revenue' && breakdown !== 'margin' && (
-                        <Line
-                          type="monotone"
-                          dataKey="revenue"
-                          name="Выручка"
-                          stroke="#2563eb"
-                          strokeWidth={2}
-                          dot={false}
-                        />
+                      {breakdown !== 'revenue' && (
+                        <Line type="monotone" dataKey="revenue" name="Выручка" stroke="#2563eb" strokeWidth={2} dot={false} />
                       )}
-                      {/* Общая прибыль — если НЕ включены «Прибыль по МП» или «Маржа по МП» */}
-                      {breakdown !== 'profit' && breakdown !== 'margin' && (
-                        <Line
-                          type="monotone"
-                          dataKey="profit"
-                          name="Прибыль"
-                          stroke="#16a34a"
-                          strokeWidth={2}
-                          dot={false}
-                        />
+                      {breakdown !== 'profit' && (
+                        <Line type="monotone" dataKey="net_profit" name="Чистая прибыль" stroke="#16a34a" strokeWidth={2} dot={false} />
                       )}
-                      {/* Выручка по МП */}
                       {breakdown === 'revenue' && (
                         <>
                           <Line type="monotone" dataKey="revenue_wb" name="Выручка WB" stroke="#7c3aed" strokeWidth={2} dot={false} />
@@ -271,85 +221,81 @@ export default function DashboardPage() {
                           <Line type="monotone" dataKey="revenue_yandex" name="Выручка Яндекс" stroke="#eab308" strokeWidth={2} dot={false} />
                         </>
                       )}
-                      {/* Прибыль по МП */}
                       {breakdown === 'profit' && (
                         <>
-                          <Line type="monotone" dataKey="profit_wb" name="Прибыль WB" stroke="#7c3aed" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="profit_ozon" name="Прибыль Ozon" stroke="#0284c7" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="profit_yandex" name="Прибыль Яндекс" stroke="#eab308" strokeWidth={2} dot={false} />
-                        </>
-                      )}
-                      {/* Маржа по МП */}
-                      {breakdown === 'margin' && (
-                        <>
-                          <Line type="monotone" dataKey="margin_wb" name="Маржинальность WB" stroke="#7c3aed" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="margin_ozon" name="Маржинальность Ozon" stroke="#0284c7" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="margin_yandex" name="Маржинальность Яндекс" stroke="#eab308" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="ebitda_wb" name="EBITDA WB" stroke="#7c3aed" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="ebitda_ozon" name="EBITDA Ozon" stroke="#0284c7" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="ebitda_yandex" name="EBITDA Яндекс" stroke="#eab308" strokeWidth={2} dot={false} />
                         </>
                       )}
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <p className="text-slate-500 text-sm">
-                    Нет данных за выбранный период
-                  </p>
+                  <p className="text-slate-500 text-sm">Нет данных за выбранный период</p>
                 )}
               </div>
 
-              {/* ТАБЛИЦА ТОВАРОВ */}
-              <div className="bg-white rounded-2xl shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-slate-800 mb-4">
-                  Товары (топ-{products.products.length})
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-600">
-                      <tr>
-                        <th className="text-left px-3 py-2 font-medium">SKU</th>
-                        <th className="text-left px-3 py-2 font-medium">Название</th>
-                        <th className="text-left px-3 py-2 font-medium">МП</th>
-                        <th className="text-right px-3 py-2 font-medium">Заказы</th>
-                        <th className="text-right px-3 py-2 font-medium">Выручка</th>
-                        <th className="text-right px-3 py-2 font-medium">Прибыль</th>
-                        <th className="text-right px-3 py-2 font-medium">Маржинальность</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.products.map((p) => (
-                        <tr key={p.product_id} className="border-t border-slate-100">
-                          <td className="px-3 py-2 font-mono text-xs text-slate-700">
-                            {p.sku}
-                          </td>
-                          <td className="px-3 py-2 text-slate-800">{p.name}</td>
-                          <td className="px-3 py-2">
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                              {p.marketplace}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-right text-slate-700">
-                            {formatNumber(p.orders)}
-                          </td>
-                          <td className="px-3 py-2 text-right font-medium text-slate-900">
-                            {formatMoney(p.revenue)}
-                          </td>
-                          <td className="px-3 py-2 text-right text-green-600 font-medium">
-                            {formatMoney(p.profit)}
-                          </td>
-                          <td className="px-3 py-2 text-right text-slate-700">
-                            {p.margin_percent}%
-                          </td>
+              {products && (
+                <div className="bg-white rounded-2xl shadow-sm p-6">
+                  <h2 className="text-lg font-semibold text-slate-800 mb-4">
+                    Товары (топ-{products.products.length})
+                  </h2>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-600">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium">SKU</th>
+                          <th className="text-left px-3 py-2 font-medium">Название</th>
+                          <th className="text-left px-3 py-2 font-medium">МП</th>
+                          <th className="text-right px-3 py-2 font-medium">Заказы</th>
+                          <th className="text-right px-3 py-2 font-medium">Выручка</th>
+                          <th className="text-right px-3 py-2 font-medium">EBITDA</th>
+                          <th className="text-right px-3 py-2 font-medium">Чистая маржинальность</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {products.products.map((p) => (
+                          <tr key={p.product_id} className="border-t border-slate-100">
+                            <td className="px-3 py-2 font-mono text-xs text-slate-700">{p.sku}</td>
+                            <td className="px-3 py-2 text-slate-800">{p.name}</td>
+                            <td className="px-3 py-2">
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                                {p.marketplace}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-right text-slate-700">{formatNumber(p.orders)}</td>
+                            <td className="px-3 py-2 text-right font-medium text-slate-900">{formatMoney(p.revenue)}</td>
+                            <td className="px-3 py-2 text-right text-purple-600 font-medium">{formatMoney(p.ebitda)}</td>
+                            <td className="px-3 py-2 text-right text-slate-700">{p.margin_percent}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
       </main>
     </>
   );
+}
+
+function vatLabel(rate: number): string {
+  if (rate === 0) return 'НДС (не платится)';
+  return `НДС ${rate}% (исходящий)`;
+}
+
+function taxLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    none: 'Налог (не платится)',
+    self_employed: 'НПД 6%',
+    usn_6: 'УСН 6%',
+    usn_15: 'УСН 15%',
+    osno: 'Налог на прибыль 25%',
+  };
+  return labels[mode] || 'Налог';
 }
 
 function KpiCard({
@@ -359,13 +305,15 @@ function KpiCard({
 }: {
   label: string;
   value: string;
-  color: 'blue' | 'green' | 'purple' | 'amber';
+  color: 'blue' | 'green' | 'purple' | 'amber' | 'rose' | 'slate';
 }) {
   const colors: Record<string, string> = {
     blue: 'text-blue-600',
     green: 'text-green-600',
     purple: 'text-purple-600',
     amber: 'text-amber-600',
+    rose: 'text-rose-600',
+    slate: 'text-slate-700',
   };
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5">
