@@ -144,57 +144,102 @@ export default function DashboardPage() {
                   color="blue"
                   subtitle={summary.vat_rate > 0 ? `без НДС: ${formatMoney(summary.kpi.revenue_net)}` : undefined}
                   formula={
-                    summary.vat_rate > 0
-                      ? `Σ всех продаж за период (с НДС):\n${formatMoney(summary.kpi.revenue)}\n\nВыручка без НДС = Выручка / (1 + ${summary.vat_rate}/100):\n${formatMoney(summary.kpi.revenue)} / (1 + ${summary.vat_rate}/100) = ${formatMoney(summary.kpi.revenue_net)}`
-                      : `Σ всех продаж за период:\n${formatMoney(summary.kpi.revenue)}`
+                    summary.vat_rate > 0 ? (
+                      <div className="space-y-2">
+                        <div className="font-semibold text-white">Выручка за период</div>
+                        <div>Σ всех продаж с НДС = <b>{formatMoney(summary.kpi.revenue)}</b></div>
+                        <div className="border-t border-slate-700 pt-2">
+                          <div className="text-slate-400">Без НДС (для расчёта маржинальности):</div>
+                          <div>{formatMoney(summary.kpi.revenue)} / (1 + {summary.vat_rate}/100) =</div>
+                          <div className="text-blue-300 font-semibold">{formatMoney(summary.kpi.revenue_net)}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>Σ всех продаж = <b>{formatMoney(summary.kpi.revenue)}</b></div>
+                    )
                   }
                 />
+
                 <KpiCard
                   label="EBITDA"
                   value={formatMoney(summary.kpi.ebitda)}
                   color="purple"
                   formula={
-                    `Прибыль до налогов (операционная эффективность)\n\n` +
-                    `EBITDA = Выручка − Комиссия − Логистика − Хранение − Реклама − Себестоимость\n\n` +
-                    `= ${formatMoney(summary.kpi.ebitda)}\n\n` +
-                    `НЕ включает: НДС, налог по режиму`
+                    <div className="space-y-2">
+                      <div className="font-semibold text-white">Прибыль до налогов</div>
+                      <div className="text-slate-400">Выручка − все расходы МП − себестоимость</div>
+                      <div className="border-t border-slate-700 pt-2">
+                        <div>Результат: <b className="text-purple-300">{formatMoney(summary.kpi.ebitda)}</b></div>
+                      </div>
+                      <div className="text-slate-400 text-[11px]">НДС и налог по режиму здесь НЕ вычтены</div>
+                    </div>
                   }
                 />
+
                 <KpiCard
                   label={vatLabel(summary.vat_rate)}
                   value={formatMoney(summary.kpi.vat)}
                   color="rose"
                   formula={vatFormula(summary.vat_rate, summary.kpi.revenue, summary.kpi.vat)}
                 />
+
                 <KpiCard
                   label={taxLabel(summary.tax_mode)}
                   value={formatMoney(summary.kpi.income_tax)}
                   color="slate"
                   formula={taxFormula(summary.tax_mode, summary.kpi.revenue_net, summary.kpi.ebitda, summary.kpi.income_tax)}
                 />
+
                 <KpiCard
                   label="Чистая прибыль"
                   value={formatMoney(summary.kpi.net_profit)}
                   color="green"
+                  subtitle={
+                    summary.vat_rate === 10 || summary.vat_rate === 22
+                      ? 'без учёта НДС к уплате'
+                      : undefined
+                  }
                   formula={
-                    `EBITDA − НДС к уплате − Налог по режиму\n\n` +
-                    `${formatMoney(summary.kpi.ebitda)} − ${formatMoney(vatPayable(summary.vat_rate, summary.kpi.vat))} − ${formatMoney(summary.kpi.income_tax)}\n\n` +
-                    `= ${formatMoney(summary.kpi.net_profit)}`
+                    <div className="space-y-3">
+                      <div className="font-semibold text-white">Формула</div>
+                      <div>Чистая прибыль = EBITDA − НДС к уплате − Налог по режиму</div>
+                      <div className="border-t border-slate-700 pt-2">
+                        <div>{formatMoney(summary.kpi.ebitda)} − {formatMoney(vatPayable(summary.vat_rate, summary.kpi.vat))} − {formatMoney(summary.kpi.income_tax)}</div>
+                        <div className="text-green-300 font-semibold">= {formatMoney(summary.kpi.net_profit)}</div>
+                      </div>
+                      {(summary.vat_rate === 10 || summary.vat_rate === 22) && (
+                        <div className="border-t border-slate-700 pt-3">
+                          <div className="font-semibold text-white mb-2">Примечание</div>
+                          <div className="text-slate-300">
+                            НДС к уплате принят равным нулю. Фактическая сумма НДС
+                            к уплате определяется как разница между исходящим и входящим
+                            НДС и, как правило, принимает положительное значение.
+                          </div>
+                          <div className="text-slate-300 mt-2">
+                            Следствие: фактическая чистая прибыль ниже расчётной величины.
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   }
                 />
+
                 <KpiCard
                   label="Чистая маржинальность"
                   value={`${summary.kpi.margin_percent}%`}
                   color="amber"
                   formula={
-                    `Чистая прибыль / Выручка без НДС × 100%\n\n` +
-                    `${formatMoney(summary.kpi.net_profit)} / ${formatMoney(summary.kpi.revenue_net)} × 100%\n\n` +
-                    `= ${summary.kpi.margin_percent}%`
+                    <div className="space-y-2">
+                      <div className="font-semibold text-white">Формула</div>
+                      <div>Чистая прибыль / Выручка без НДС × 100%</div>
+                      <div className="border-t border-slate-700 pt-2">
+                        <div>{formatMoney(summary.kpi.net_profit)} / {formatMoney(summary.kpi.revenue_net)} × 100%</div>
+                        <div className="text-amber-300 font-semibold">= {summary.kpi.margin_percent}%</div>
+                      </div>
+                    </div>
                   }
                 />
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+              </div><div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                   <h2 className="text-lg font-semibold text-slate-800">
                     Динамика за {days} дней
@@ -324,8 +369,7 @@ export default function DashboardPage() {
 
 function vatLabel(rate: number): string {
   if (rate === 0) return 'НДС (не платится)';
-  if (rate === 10 || rate === 22) return `НДС ${rate}% (к вычету)`;
-  return `НДС ${rate}% к уплате`;
+  return `НДС ${rate}% (исходящий)`;
 }
 
 function taxLabel(mode: string): string {
@@ -339,6 +383,87 @@ function taxLabel(mode: string): string {
   return labels[mode] || 'Налог';
 }
 
+function vatFormula(rate: number, revenue: number, vat: number): React.ReactNode {
+  if (rate === 0) {
+    return <div>На данном режиме НДС не уплачивается</div>;
+  }
+  return (
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Исходящий НДС</div>
+      <div>Выручка × {rate} / (100 + {rate})</div>
+      <div className="border-t border-slate-700 pt-2">
+        <div>{formatMoney(revenue)} × {rate}/{100 + rate}</div>
+        <div className="text-rose-300 font-semibold">= {formatMoney(vat)}</div>
+      </div>
+      {rate === 10 || rate === 22 ? (
+        <div className="border-t border-slate-700 pt-3">
+          <div className="font-semibold text-white mb-2">Примечание</div>
+          <div className="text-slate-300">
+            Показана сумма налога, предъявленная покупателю в составе цены реализации.
+          </div>
+          <div className="text-slate-300 mt-2">
+            Сумма НДС к уплате определяется как разница между исходящим и входящим НДС.
+            Сумма входящего НДС в расчёте не учитывается в связи с отсутствием данных.
+          </div>
+          <div className="text-slate-300 mt-2">
+            НДС к уплате в расчёте чистой прибыли не участвует.
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function taxFormula(mode: string, revenueNet: number, ebitda: number, tax: number): React.ReactNode {
+  const titles: Record<string, string> = {
+    none: 'Налог не платится',
+    self_employed: 'НПД 6%',
+    usn_6: 'УСН 6%',
+    usn_15: 'УСН 15%',
+    osno: 'Налог на прибыль 25%',
+  };
+
+  if (mode === 'none') return <div>На этом режиме налог не платится</div>;
+
+  if (mode === 'self_employed' || mode === 'usn_6') {
+    return (
+      <div className="space-y-2">
+        <div className="font-semibold text-white">{titles[mode]}</div>
+        <div>6% × Выручка без НДС</div>
+        <div className="border-t border-slate-700 pt-2">
+          <div>0.06 × {formatMoney(revenueNet)}</div>
+          <div className="text-slate-200 font-semibold">= {formatMoney(tax)}</div>
+        </div>
+      </div>
+    );
+  }
+  if (mode === 'usn_15') {
+    return (
+      <div className="space-y-2">
+        <div className="font-semibold text-white">{titles[mode]}</div>
+        <div>15% × EBITDA (если EBITDA &gt; 0)</div>
+        <div className="border-t border-slate-700 pt-2">
+          <div>0.15 × {formatMoney(ebitda)}</div>
+          <div className="text-slate-200 font-semibold">= {formatMoney(tax)}</div>
+        </div>
+      </div>
+    );
+  }
+  if (mode === 'osno') {
+    return (
+      <div className="space-y-2">
+        <div className="font-semibold text-white">{titles[mode]}</div>
+        <div>25% × EBITDA (если EBITDA &gt; 0)</div>
+        <div className="border-t border-slate-700 pt-2">
+          <div>0.25 × {formatMoney(ebitda)}</div>
+          <div className="text-slate-200 font-semibold">= {formatMoney(tax)}</div>
+        </div>
+      </div>
+    );
+  }
+  return <div>Налог</div>;
+}
+
 function KpiCard({
   label,
   value,
@@ -350,7 +475,7 @@ function KpiCard({
   value: string;
   color: 'blue' | 'green' | 'purple' | 'amber' | 'rose' | 'slate';
   subtitle?: string;
-  formula?: string;
+  formula?: React.ReactNode;
 }) {
   const colors: Record<string, string> = {
     blue: 'text-blue-600',
@@ -360,22 +485,40 @@ function KpiCard({
     rose: 'text-rose-600',
     slate: 'text-slate-700',
   };
+  const [open, setOpen] = useState(false);
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-5 relative group">
-      <div className="flex items-center gap-1 text-sm text-slate-500 mb-1">
-        <span>{label}</span>
+    <div className="bg-white rounded-2xl shadow-sm p-5 relative flex flex-col">
+      {/* Заголовок фиксированной высоты + значок справа */}
+      <div className="flex items-start justify-between gap-2 mb-2 min-h-[2.75rem]">
+        <div className="text-sm text-slate-600 leading-snug">{label}</div>
         {formula && (
-          <span className="cursor-help text-slate-300 group-hover:text-slate-600 transition">
-            ⓘ
-          </span>
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+            className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-slate-400 text-slate-500 hover:border-slate-700 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-center text-[11px] font-bold transition-colors"
+            aria-label="Формула расчёта"
+          >
+            i
+          </button>
         )}
       </div>
-      <div className={`text-2xl font-bold ${colors[color]}`}>{value}</div>
-      {subtitle && (
-        <div className="text-xs text-slate-500 mt-1">{subtitle}</div>
-      )}
-      {formula && (
-        <div className="absolute hidden group-hover:block z-20 top-full left-0 mt-2 bg-slate-900 text-white text-xs rounded-lg p-3 shadow-xl w-80 whitespace-pre-line leading-relaxed">
+
+      {/* Значение */}
+      <div className={`text-2xl font-bold leading-tight ${colors[color]}`}>{value}</div>
+
+      {/* Подпись фиксированной высоты */}
+      <div className="min-h-[1.25rem] mt-1">
+        {subtitle && (
+          <div className="text-xs text-slate-500 leading-tight">{subtitle}</div>
+        )}
+      </div>
+
+      {/* Тултип */}
+      {formula && open && (
+        <div className="absolute z-50 top-full right-0 mt-2 w-80 max-w-[90vw] bg-slate-900 text-white text-xs rounded-xl shadow-2xl p-4 leading-relaxed">
           {formula}
         </div>
       )}
@@ -389,30 +532,3 @@ function vatPayable(rate: number, vat: number): number {
   return vat;
 }
 
-function vatFormula(rate: number, revenue: number, vat: number): string {
-  if (rate === 0) {
-    return 'На этом режиме НДС не платится';
-  }
-  const base = `Исходящий НДС = Выручка × ${rate} / (100 + ${rate})\n= ${formatMoney(revenue)} × ${rate}/100+${rate}\n= ${formatMoney(vat)}`;
-  if (rate === 10 || rate === 22) {
-    return `${base}\n\nНа ${rate}% есть право на вычет входящего НДС.\nК уплате = Исходящий − Входящий.\nМы показываем исходящий справочно,\nне вычитаем из прибыли.`;
-  }
-  return `${base}\n\nНа льготной ставке ${rate}% (УСН) вычета нет.\nВесь исходящий НДС идёт в бюджет\nи уменьшает чистую прибыль.`;
-}
-
-function taxFormula(mode: string, revenueNet: number, ebitda: number, tax: number): string {
-  if (mode === 'none') return 'На этом режиме налог не платится';
-  if (mode === 'self_employed') {
-    return `НПД = 6% × Выручка без НДС\n= 0.06 × ${formatMoney(revenueNet)}\n= ${formatMoney(tax)}`;
-  }
-  if (mode === 'usn_6') {
-    return `УСН 6% = 6% × Выручка без НДС\n= 0.06 × ${formatMoney(revenueNet)}\n= ${formatMoney(tax)}`;
-  }
-  if (mode === 'usn_15') {
-    return `УСН 15% = 15% × max(EBITDA, 0)\n= 0.15 × ${formatMoney(ebitda)}\n= ${formatMoney(tax)}`;
-  }
-  if (mode === 'osno') {
-    return `Налог на прибыль = 25% × max(EBITDA, 0)\n= 0.25 × ${formatMoney(ebitda)}\n= ${formatMoney(tax)}`;
-  }
-  return '';
-}
