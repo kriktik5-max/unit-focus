@@ -49,6 +49,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
   const [mp, setMp] = useState('all');
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
+  // Разбивка по МП имеет смысл только когда фильтр = "Все"
+  useEffect(() => {
+    if (mp !== 'all') {
+      setShowBreakdown(false);
+    }
+  }, [mp]);
 
   useEffect(() => {
     (async () => {
@@ -157,9 +165,23 @@ export default function DashboardPage() {
 
               {/* ГРАФИК */}
               <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-                <h2 className="text-lg font-semibold text-slate-800 mb-4">
-                  Динамика за {days} дней
-                </h2>
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <h2 className="text-lg font-semibold text-slate-800">
+                    Динамика за {days} дней
+                  </h2>
+                  {mp === 'all' && (
+                    <button
+                      onClick={() => setShowBreakdown(!showBreakdown)}
+                      className={`text-xs px-3 py-1.5 rounded-lg font-medium transition ${
+                        showBreakdown
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {showBreakdown ? '✓ ' : ''}Прибыль по маркетплейсам
+                    </button>
+                  )}
+                </div>
                 {summary.daily.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={summary.daily}>
@@ -190,14 +212,44 @@ export default function DashboardPage() {
                         strokeWidth={2}
                         dot={false}
                       />
-                      <Line
-                        type="monotone"
-                        dataKey="profit"
-                        name="Прибыль"
-                        stroke="#16a34a"
-                        strokeWidth={2}
-                        dot={false}
-                      />
+                      {!showBreakdown && (
+                        <Line
+                          type="monotone"
+                          dataKey="profit"
+                          name="Прибыль"
+                          stroke="#16a34a"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      )}
+                      {showBreakdown && (
+                        <>
+                          <Line
+                            type="monotone"
+                            dataKey="profit_wb"
+                            name="Прибыль WB"
+                            stroke="#7c3aed"
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="profit_ozon"
+                            name="Прибыль Ozon"
+                            stroke="#0284c7"
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="profit_yandex"
+                            name="Прибыль Яндекс"
+                            stroke="#eab308"
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                        </>
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (

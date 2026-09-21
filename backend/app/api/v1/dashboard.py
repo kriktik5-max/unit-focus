@@ -28,6 +28,9 @@ class DailyPoint(BaseModel):
     date: str  # YYYY-MM-DD
     revenue: float
     profit: float
+    profit_wb: float = 0
+    profit_ozon: float = 0
+    profit_yandex: float = 0
 
 
 class SummaryResponse(BaseModel):
@@ -91,21 +94,47 @@ def summary(
     orders = int(agg.orders)
     margin = (profit / revenue * 100) if revenue > 0 else 0.0
 
-    # Точки по дням
-    daily_rows = q.with_entities(
-        func.date(SalesDaily.date).label("d"),
-        func.coalesce(func.sum(SalesDaily.revenue), 0).label("revenue"),
-        func.coalesce(func.sum(SalesDaily.profit), 0).label("profit"),
-    ).group_by(func.date(SalesDaily.date)).order_by(func.date(SalesDaily.date)).all()
-
-    daily = [
-        DailyPoint(
-            date=str(row.d),
-            revenue=float(row.revenue),
-            profit=float(row.profit),
-        )
-        for row in daily_rows
+    # Точки по дням с разбивкой по маркетплейсам
+    daily_filters = [
+        SalesDaily.user_id == user.id,
+        SalesDaily.date >= date_from,
     ]
+    if marketplace != "all":
+        daily_filters.append(Product.marketplace == marketplace)
+
+    daily_rows = (
+        db.query(
+            func.date(SalesDaily.date).label("d"),
+            Product.marketplace.label("mp"),
+            func.coalesce(func.sum(SalesDaily.revenue), 0).label("revenue"),
+            func.coalesce(func.sum(SalesDaily.profit), 0).label("profit"),
+        )
+        .join(Product, Product.id == SalesDaily.product_id)
+        .filter(*daily_filters)
+        .group_by(func.date(SalesDaily.date), Product.marketplace)
+        .order_by(func.date(SalesDaily.date))
+        .all()
+    )
+
+    # Собираем по дням: {date: {revenue, profit, profit_wb, ...}}
+    by_date: dict = {}
+    for row in daily_rows:
+        d = str(row.d)
+        if d not in by_date:
+            by_date[d] = {
+                "date": d, "revenue": 0.0, "profit": 0.0,
+                "profit_wb": 0.0, "profit_ozon": 0.0, "profit_yandex": 0.0,
+            }
+        by_date[d]["revenue"] += float(row.revenue)
+        by_date[d]["profit"] += float(row.profit)
+        if row.mp == "wb":
+            by_date[d]["profit_wb"] += float(row.profit)
+        elif row.mp == "ozon":
+            by_date[d]["profit_ozon"] += float(row.profit)
+        elif row.mp == "yandex":
+            by_date[d]["profit_yandex"] += float(row.profit)
+
+    daily = [DailyPoint(**v) for v in by_date.values()]
 
     return SummaryResponse(
         kpi=KpiOut(

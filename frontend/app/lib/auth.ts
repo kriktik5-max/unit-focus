@@ -134,6 +134,9 @@ export type DailyPoint = {
   date: string;
   revenue: number;
   profit: number;
+  profit_wb: number;
+  profit_ozon: number;
+  profit_yandex: number;
 };
 
 export type DashboardSummary = {
