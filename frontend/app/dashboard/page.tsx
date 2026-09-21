@@ -166,7 +166,9 @@ export default function DashboardPage() {
                         }
                       />
                       <Tooltip
-                        formatter={(value: number) => formatMoney(value)}
+                        formatter={(value) =>
+                          typeof value === 'number' ? formatMoney(value) : String(value)
+                        }
                         labelFormatter={(l) => `Дата: ${l}`}
                       />
                       <Legend />
