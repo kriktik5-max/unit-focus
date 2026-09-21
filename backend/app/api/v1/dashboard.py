@@ -65,6 +65,7 @@ class ProductRow(BaseModel):
     marketplace: str
     revenue: float
     ebitda: float
+    net_profit: float
     orders: int
     margin_percent: float
 
@@ -103,12 +104,25 @@ def _calc_taxes(
     vat_r = d(str(vat_rate))
     rev = d(str(revenue))
     eb = d(str(ebitda))
+    ded = d(str(deductible_expenses))
 
-    # НДС как доля в цене (без вычета)
-    if vat_r > ZERO:
-        vat_payable = rev * vat_r / (d("100") + vat_r)
-    else:
+    # Определяем, доступен ли вычет по НК РФ
+    # Вычет: только на стандартных ставках 10% и 22% (плюс 0% = нет НДС)
+    # Без вычета: льготные ставки УСН 5% и 7%
+    vat_rate_int = int(vat_rate)
+    can_deduct = vat_rate_int in (0, 10, 22)
+
+    if vat_rate_int == 0:
         vat_payable = ZERO
+    elif can_deduct:
+        # С вычетом: к уплате разница между исходящим и входящим
+        vat_output_inner = rev * vat_r / (d("100") + vat_r)
+        vat_input_inner = ded * vat_r / (d("100") + vat_r)
+        vat_payable = vat_output_inner - vat_input_inner
+    else:
+        # Без вычета (5%, 7%): весь исходящий НДС в бюджет
+        vat_payable = rev * vat_r / (d("100") + vat_r)
+
     vat_out = vat_payable
 
     profit_before_income_tax = eb - vat_payable
@@ -349,6 +363,7 @@ def products(
 
         # Чистая прибыль SKU = EBITDA × (1 − tax_share)
         net_profit_sku = ebitda * (1 - tax_share)
+        # (EBITDA тут в суммах с НДС, а net_profit — уже после всех налогов)
 
         # Выручка без НДС для знаменателя
         revenue_net = revenue / (1 + vat_rate_dec) if vat_rate_dec > 0 else revenue
@@ -363,6 +378,7 @@ def products(
             marketplace=row.marketplace,
             revenue=round(revenue, 2),
             ebitda=round(ebitda, 2),
+            net_profit=round(net_profit_sku, 2),
             orders=int(row.orders),
             margin_percent=round(margin, 2),
         ))

@@ -250,6 +250,7 @@ export default function DashboardPage() {
                           <th className="text-right px-3 py-2 font-medium">Заказы</th>
                           <th className="text-right px-3 py-2 font-medium">Выручка</th>
                           <th className="text-right px-3 py-2 font-medium">EBITDA</th>
+                          <th className="text-right px-3 py-2 font-medium">Чистая прибыль</th>
                           <th className="text-right px-3 py-2 font-medium">Чистая маржинальность</th>
                         </tr>
                       </thead>
@@ -266,6 +267,7 @@ export default function DashboardPage() {
                             <td className="px-3 py-2 text-right text-slate-700">{formatNumber(p.orders)}</td>
                             <td className="px-3 py-2 text-right font-medium text-slate-900">{formatMoney(p.revenue)}</td>
                             <td className="px-3 py-2 text-right text-purple-600 font-medium">{formatMoney(p.ebitda)}</td>
+                            <td className="px-3 py-2 text-right text-green-600 font-medium">{formatMoney(p.net_profit)}</td>
                             <td className="px-3 py-2 text-right text-slate-700">{p.margin_percent}%</td>
                           </tr>
                         ))}

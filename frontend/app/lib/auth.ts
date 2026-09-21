@@ -184,6 +184,7 @@ export type ProductRow = {
   marketplace: string;
   revenue: number;
   ebitda: number;
+  net_profit: number;
   orders: number;
   margin_percent: number;
 };
