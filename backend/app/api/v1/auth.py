@@ -225,10 +225,18 @@ def update_settings(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Обновление налогового режима и ставки НДС."""
-    user.tax_mode = payload.tax_mode
+    """Обновление налогового режима и ставки НДС.
+
+    На режимах НПД и «Без налога» НДС не применяется — принудительно 0%.
+    """
     from decimal import Decimal
-    user.vat_rate = Decimal(str(payload.vat_rate))
+
+    user.tax_mode = payload.tax_mode
+    # На этих режимах НДС не платится — обнуляем принудительно
+    if payload.tax_mode in ("self_employed", "none"):
+        user.vat_rate = Decimal("0")
+    else:
+        user.vat_rate = Decimal(str(payload.vat_rate))
     db.commit()
     db.refresh(user)
     return UserOut.model_validate(user)

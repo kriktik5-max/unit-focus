@@ -146,7 +146,8 @@ export default function AccountPage() {
               <select
                 value={vatRate}
                 onChange={(e) => setVatRate(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 focus:border-blue-500 focus:outline-none"
+                disabled={taxMode === 'self_employed' || taxMode === 'none'}
+                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 focus:border-blue-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
               >
                 <option value={0}>Без НДС (0%)</option>
                 {(taxMode === 'usn_6' || taxMode === 'usn_15') && (
@@ -155,9 +156,9 @@ export default function AccountPage() {
                     <option value={7}>НДС 7%</option>
                   </>
                 )}
-                {taxMode !== 'self_employed' && taxMode !== 'none' && (
+                {taxMode === 'usn_6' || taxMode === 'usn_15' || taxMode === 'osno' ? (
                   <option value={22}>НДС 22%</option>
-                )}
+                ) : null}
                 {taxMode === 'osno' && <option value={10}>НДС 10%</option>}
               </select>
               <p className="text-xs text-slate-500 mt-1">
