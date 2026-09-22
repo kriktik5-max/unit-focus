@@ -137,7 +137,11 @@ export default function DashboardPage() {
 
           {!loading && summary && (
             <>
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+              <div className={`grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6 ${
+                summary.vat_rate > 0 && summary.tax_mode !== 'self_employed' && summary.tax_mode !== 'none'
+                  ? 'xl:grid-cols-6'
+                  : 'xl:grid-cols-5'
+              }`}>
                 <KpiCard
                   label="Выручка"
                   value={formatMoney(summary.kpi.revenue)}
@@ -176,12 +180,14 @@ export default function DashboardPage() {
                   }
                 />
 
-                <KpiCard
-                  label={vatLabel(summary.vat_rate)}
-                  value={formatMoney(summary.kpi.vat)}
-                  color="rose"
-                  formula={vatFormula(summary.vat_rate, summary.kpi.revenue, summary.kpi.vat)}
-                />
+                {summary.tax_mode !== 'self_employed' && summary.tax_mode !== 'none' && (
+                  <KpiCard
+                    label={vatLabel(summary.vat_rate)}
+                    value={formatMoney(summary.kpi.vat)}
+                    color="rose"
+                    formula={vatFormula(summary.vat_rate, summary.kpi.revenue, summary.kpi.vat)}
+                  />
+                )}
 
                 <KpiCard
                   label={taxLabel(summary.tax_mode)}
@@ -202,9 +208,9 @@ export default function DashboardPage() {
                   formula={
                     <div className="space-y-3">
                       <div className="font-semibold text-white">Формула</div>
-                      <div>Чистая прибыль = EBITDA − НДС к уплате − Налог по режиму</div>
+                      <div>Чистая прибыль = EBITDA − НДС к уплате − {taxName(summary.tax_mode)}</div>
                       <div className="border-t border-slate-700 pt-2">
-                        <div>{formatMoney(summary.kpi.ebitda)} − {formatMoney(vatPayable(summary.vat_rate, summary.kpi.vat))} − {formatMoney(summary.kpi.income_tax)}</div>
+                        <div>{formatMoney(summary.kpi.ebitda)} − {formatMoney(vatPayable(summary.vat_rate, summary.kpi.vat, summary.tax_mode))} − {formatMoney(summary.kpi.income_tax)}</div>
                         <div className="text-green-300 font-semibold">= {formatMoney(summary.kpi.net_profit)}</div>
                       </div>
                       {(summary.vat_rate === 10 || summary.vat_rate === 22) && (
@@ -464,6 +470,12 @@ function taxFormula(mode: string, revenueNet: number, ebitda: number, tax: numbe
   return <div>Налог</div>;
 }
 
+function taxName(mode: string): string {
+  if (mode === 'self_employed') return 'НПД';
+  if (mode === 'none') return 'Налог';
+  return 'Налог на прибыль';
+}
+
 function KpiCard({
   label,
   value,
@@ -526,7 +538,8 @@ function KpiCard({
   );
 }
 
-function vatPayable(rate: number, vat: number): number {
+function vatPayable(rate: number, vat: number, taxMode: string): number {
+  if (taxMode === 'self_employed' || taxMode === 'none') return 0;
   if (rate === 0) return 0;
   if (rate === 10 || rate === 22) return 0;
   return vat;

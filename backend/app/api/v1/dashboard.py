@@ -109,6 +109,13 @@ def _calc_taxes(
     eb = d(str(ebitda))
     vat_rate_int = int(vat_rate)
 
+    # На НПД и без налогового режима НДС не платится и не отображается,
+    # независимо от того, что сохранено в vat_rate (могло остаться
+    # от предыдущего режима пользователя).
+    if mode in (TaxMode.SELF_EMPLOYED, TaxMode.NONE):
+        vat_rate_int = 0
+        vat_r = ZERO
+
     # Исходящий НДС — всегда справочно
     if vat_r > ZERO:
         vat_output = rev * vat_r / (d("100") + vat_r)
@@ -197,9 +204,13 @@ def summary(
 
     tax_total = vat_total + income_tax
 
-    # Выручка без НДС — академически верный знаменатель для маржинальности
+    # Выручка без НДС — знаменатель для маржинальности.
+    # На НПД и «Без налога» НДС не применяется, revenue_net = revenue.
     vat_rate_dec = float(user.vat_rate or 0) / 100
-    revenue_net = revenue / (1 + vat_rate_dec) if vat_rate_dec > 0 else revenue
+    if user.tax_mode in ("self_employed", "none"):
+        revenue_net = revenue
+    else:
+        revenue_net = revenue / (1 + vat_rate_dec) if vat_rate_dec > 0 else revenue
 
     margin = (net_profit / revenue_net * 100) if revenue_net > 0 else 0.0
 
