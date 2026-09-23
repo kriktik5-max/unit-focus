@@ -12,62 +12,52 @@ export function Header() {
     setLoggedIn(getToken() !== null);
     setMounted(true);
 
-    // Слушаем изменения localStorage (например, после логина)
     const onStorage = () => setLoggedIn(getToken() !== null);
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   return (
-    <header className="border-b border-slate-200">
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+    <header className="bg-navy">
+      <div className="max-w-6xl mx-auto px-6 h-[76px] flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-7 h-7 border border-gold text-gold flex items-center justify-center font-mono text-[11px]">
             UF
           </div>
-          <span className="font-bold text-lg">Юнит-Фокус</span>
+          <span className="font-medium text-[15px] text-white tracking-wide">Юнит-Фокус</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8 text-sm text-slate-600">
-          <a href="#features" className="hover:text-slate-900">Возможности</a>
-          <a href="#marketplaces" className="hover:text-slate-900">Маркетплейсы</a>
-          <a href="#how" className="hover:text-slate-900">Как работает</a>
-          <Link href="/pricing" className="hover:text-slate-900">Тарифы</Link>
+        <nav className="hidden md:flex items-center gap-8 text-[13.5px] text-white/55">
+          <a href="#features" className="hover:text-white transition">Возможности</a>
+          <a href="#marketplaces" className="hover:text-white transition">Маркетплейсы</a>
+          <a href="#how" className="hover:text-white transition">Как работает</a>
+          <Link href="/pricing" className="hover:text-white transition">Тарифы</Link>
         </nav>
 
         <div className="flex items-center gap-3">
           {mounted && loggedIn ? (
             <>
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-slate-700 hover:text-slate-900"
-              >
+              <Link href="/dashboard" className="text-[13.5px] font-medium text-white/70 hover:text-white transition">
                 Дашборд
               </Link>
-              <Link
-                href="/account"
-                className="text-sm font-medium text-slate-700 hover:text-slate-900"
-              >
+              <Link href="/account" className="text-[13.5px] font-medium text-white/70 hover:text-white transition">
                 Личный кабинет
               </Link>
               <Link
                 href="/calculator"
-                className="bg-slate-900 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+                className="bg-gold text-navy text-[13.5px] font-semibold px-5 py-2.5 hover:brightness-110 transition"
               >
                 Калькулятор
               </Link>
             </>
           ) : (
             <>
-              <Link
-                href="/login"
-                className="text-sm font-medium text-slate-700 hover:text-slate-900"
-              >
+              <Link href="/login" className="text-[13.5px] font-medium text-white/70 hover:text-white transition">
                 Войти
               </Link>
               <Link
                 href="/register"
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+                className="bg-gold text-navy text-[13.5px] font-semibold px-5 py-2.5 hover:brightness-110 transition"
               >
                 Регистрация
               </Link>
